@@ -1,0 +1,146 @@
+############################################
+# @ Author: Meet Patel
+# @ Create Time: 2025-08-12 17:20:53
+# @ Modified by: Meet Patel
+# @ Modified time: 2025-08-16 11:44:13
+# @ Description:
+############################################
+
+# SFT (Supervised Fine-Tuning) Configuration with Callbacks Example
+# This configuration demonstrates how to use the callback system
+
+# Training method
+training_method: "sft"
+
+# Model configuration
+model:
+  model_name: "openai-community/gpt2"
+  type: "hf"  # Hugging Face model
+  auto_class_name: "AutoModelForCausalLM"
+  torch_dtype: "float16"
+  use_cache: false
+  attn_implementation: "sdpa"
+  tokenizer_name: "openai-community/gpt2"
+
+# Dataset configuration
+dataset:
+  name: "Arthur-LAGACHERIE/very-smollm-corpus-0.5M"
+  input_column: "text"
+  max_length: 2048
+  train_split: "train"
+  split_ratio: 0.8  # Ratio for train/test split, used when only train_split is provided
+
+# Optimizer configuration
+optimizer:
+  name: "adamw"
+  lr: 3e-4
+  weight_decay: 0.01
+  betas: [0.9, 0.999]
+  eps: 1e-8
+
+# Scheduler configuration
+scheduler:
+  name: "cosine"
+  warmup_steps: 100
+  num_training_steps: 1000
+
+# Loss function configuration
+loss:
+  name: "cross_entropy"
+  ignore_index: -100
+  label_smoothing: 0.1
+
+# Training parameters
+train_batch_size: 4
+val_batch_size: 4
+num_epochs: 3
+max_train_steps: 1000
+max_eval_steps: 100
+gradient_accumulation_steps: 4
+gradient_checkpointing: true
+context_length: 2048
+
+# Mixed precision
+use_autocast: true
+grad_scaler: true
+
+# Device and distributed training
+device: "qaic"
+enable_ddp: false
+enable_pp: false
+num_pp_stages: 1
+num_workers_dataloader: 4
+
+# Validation
+run_validation: true
+validation_steps: 100
+
+# Logging and saving
+output_dir: "sft_training_results"
+save_model: true
+save_metrics: true
+intermediate_step_save: 500
+log_level: "INFO"
+
+# Convergence
+convergence_counter: 5
+convergence_loss: 1e-4
+
+# PEFT configuration
+use_peft: true
+peft_method: "lora"
+peft_config_file: null
+from_peft_checkpoint: null
+
+# Batching strategy
+batching_strategy: "packing"
+
+# Profiling
+use_profiler: false
+
+# Reproducibility
+seed: 42
+
+# Callbacks configuration
+callbacks:
+  # Enhanced logging callback
+  - name: "logging"
+    enabled: true
+    log_every_n_steps: 10
+    log_every_n_epochs: 1
+    log_metrics: true
+    log_gradients: false
+
+  # Checkpoint callback with custom settings
+  - name: "checkpoint"
+    enabled: true
+    save_every_n_epochs: 1
+    save_every_n_steps: 100
+    save_best_only: true
+    save_last: true
+    max_checkpoints: 3
+    checkpoint_dir: "custom_checkpoints"
+
+  # Convergence monitoring with early stopping
+  - name: "convergence"
+    enabled: true
+    patience: 3
+    min_delta: 1e-4
+    monitor: "val_loss"
+    mode: "min"
+    window_size: 5
+    convergence_threshold: 1e-6
+
+  # Max step callback
+  - name: "max_step"
+    enabled: true
+    max_steps: 1000
+    max_epochs: 5
+
+  # Learning rate monitoring
+  - name: "learning_rate"
+    enabled: true
+    log_lr: true
+    lr_scheduler_patience: 2
+    lr_scheduler_factor: 0.5
+    min_lr: 1e-7 

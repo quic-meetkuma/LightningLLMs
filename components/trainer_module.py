@@ -1,0 +1,181 @@
+"""
+# @ Author: Meet Patel
+# @ Create Time: 2025-08-12 22:57:14
+# @ Modified by: Meet Patel
+# @ Modified time: 2025-08-16 11:34:15
+# @ Description:
+"""
+
+"""
+Training Modules for the training system.
+"""
+
+import torch.optim as optim
+from abc import ABC, abstractmethod
+
+import torch
+from pytorch_lightning import LightningModule
+from torch.optim import AdamW, SGD
+from transformers import get_linear_schedule_with_warmup
+from components.component_registry import registry
+from components.component_registry import ComponentFactory
+from peft import LoraConfig, get_peft_model
+
+
+@registry.trainer_module("causal_lm")
+class CausalLMModule(LightningModule):
+    """Causal LM module for autoregressive task."""
+
+    def __init__(self, config, **kwargs):
+        super().__init__()
+        self.config = config
+
+        # Load model and tokenizer
+        self.model_config = self.config.get_model_config()
+        self.use_peft = self.model_config.get("use_peft", False)
+        if self.use_peft:
+            self.peft_config = self.model_config.get("peft_config", {})
+
+        self.loss_config = self.config.get_loss_config()
+        self.scheduler_config = self.config.get_scheduler_config()
+        self.opt_config = self.config.get_optimizer_config()
+        self.model_cls = ComponentFactory.create_model(**self.model_config)
+        self.model = self.model_cls.load_model()
+        self.tokenizer = self.model_cls.load_tokenizer()
+
+        ## Apply PEFT here.
+        self.apply_lora()
+        self.trainable_parameters = [p for n, p in self.model.named_parameters() if p.requires_grad == True]
+        # Save hyperparameters
+        # self.save_hyperparameters()
+
+        # Initialize loss function
+        self.loss_fn = ComponentFactory.create_loss_function(**self.loss_config)
+
+    def apply_lora(self):
+        """Apply LoRA to the model if configured."""
+        if not self.use_peft:
+            return
+
+        lora_config = LoraConfig(
+            r=self.peft_config.get("lora_r"),
+            lora_alpha=self.peft_config.get("lora_alpha"),
+            target_modules=self.peft_config.get("target_modules"),
+            lora_dropout=self.peft_config.get("lora_dropout"),
+            bias=self.peft_config.get("bias"),
+            task_type="CAUSAL_LM",
+        )
+
+        self.model = get_peft_model(self.model, lora_config)
+        self.model.print_trainable_parameters()
+
+    def forward(self, **batch_input):
+        """Forward pass through the model."""
+        output = self.model(**batch_input)
+        return output
+
+    def training_step(self, batch, batch_idx):
+        """Training step."""
+        input_ids = batch["input_ids"]
+        attention_mask = batch["attention_mask"]
+        labels = batch["labels"]
+
+        output = self.forward(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            labels=labels,
+        )
+
+        loss = self.loss_fn(output.logits, labels)
+        self.log(
+            "train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
+        )
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        """Validation step."""
+        input_ids = batch["input_ids"]
+        attention_mask = batch["attention_mask"]
+        labels = batch["labels"]
+
+        output = self.forward(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            labels=labels,
+        )
+
+        loss = self.loss_fn(output.logits, labels)
+        self.log(
+            "val_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
+        )
+        return loss
+
+    def test_step(self, batch, batch_idx):
+        """Test step."""
+        input_ids = batch["input_ids"]
+        attention_mask = batch["attention_mask"]
+        labels = batch["labels"]
+
+        output = self.forward(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            labels=labels,
+        )
+
+        loss = self.loss_fn(output.logits, labels)
+        self.log(
+            "test_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
+        )
+        return loss
+
+    def configure_optimizers(self):
+        """Configure optimizers and learning rate scheduler."""
+        optimizer = ComponentFactory.create_optimizer(
+            **self.opt_config, model_params=self.trainable_parameters
+        )
+
+        max_steps = self.trainer.estimated_stepping_batches
+        self.scheduler_config["num_training_steps"] = max_steps
+        scheduler = ComponentFactory.create_scheduler(
+            **self.scheduler_config,
+            optimizer=optimizer.optimizer,
+        )
+        return {
+            "optimizer": optimizer.optimizer,
+            "lr_scheduler": {
+                "scheduler": scheduler,
+                "interval": "step",
+                "frequency": 1,
+            },
+        }
+
+    def lr_scheduler_step(self, scheduler, optimizer, metric=None):
+        scheduler.step()
+    
+    def generate_summary(self, input_text, max_length=128):
+        """Generate summary for input text."""
+        # Tokenize input text
+        inputs = self.tokenizer(
+            input_text,
+            max_length=self.config.data.max_source_length,
+            return_tensors="pt",
+            truncation=True,
+            padding="max_length",
+        )
+
+        # Move inputs to device
+        inputs = {k: v.to(self.device) for k, v in inputs.items()}
+
+        # Generate summary
+        summary_ids = self.model.generate(
+            input_ids=inputs["input_ids"],
+            attention_mask=inputs["attention_mask"],
+            max_length=max_length,
+            num_beams=4,
+            length_penalty=2.0,
+            early_stopping=True,
+        )
+
+        # Decode summary
+        summary = self.tokenizer.decode(summary_ids[0], skip_special_tokens=True)
+        return summary

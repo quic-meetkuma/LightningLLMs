@@ -6,6 +6,9 @@ __pycache__/
 # C extensions
 *.so
 
+# training results
+training_results/
+
 # Distribution / packaging
 .Python
 build/

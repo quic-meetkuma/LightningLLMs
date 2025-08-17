@@ -1,0 +1,86 @@
+############################################
+# @ Author: Meet Patel
+# @ Create Time: 2025-08-12 17:20:53
+# @ Modified by: Meet Patel
+# @ Modified time: 2025-08-16 11:44:13
+# @ Description:
+############################################
+
+# Model configuration
+model:
+  model_type: "hf"  # Hugging Face model
+  auto_class_name: "AutoModelForCausalLM"
+  model_name: "HuggingFaceTB/SmolLM-135M"  # Pretrained model name
+  load_in_4bit: true
+  use_peft: true
+  peft_config:
+    lora_r: 8
+    lora_alpha: 16
+    lora_dropout: 0.1
+    target_modules: ["q_proj", "v_proj"]
+    bias: "none"  # Options: none, all, lora_only
+    task_type: "CAUSAL_LM"  # Options: CAUSAL_LM, SEQ_2_SEQ_LM, etc.
+    peft_type: "LORA"  # Options: LORA, IA3, etc.
+
+# Dataset configuration
+dataset:
+  tokenizer_name: "HuggingFaceTB/SmolLM-135M"
+  dataset_type: "seq_completion"
+  dataset_name: "Arthur-LAGACHERIE/very-smollm-corpus-0.5M"
+  train_split: "train"
+  max_length: 512
+  split_ratio: 0.8  # Ratio for train/test split, used when only train_split is provided
+  test_split: "test"
+  use_validation_split: False
+  input_columns: 
+    - text
+  target_column: null
+  train_batch_size: 1
+  eval_batch_size: 1
+  num_workers: 4
+  collate_fn: "dynamic_padding"
+  seed: 42
+
+# Training configuration
+training:
+  type: "causal_lm"
+  output_dir: "./results"
+  gradient_accumulation_steps: 1
+  num_train_epochs: 1
+  precision: "16-mixed"
+  seed: 42
+  device: "cuda"
+  num_devices: 1
+  strategy: "ddp"
+
+# Optimizer configuration
+optimizer:
+  name: "adamw"  # Options: adamw, adam, sgd
+  lr: 5e-5
+  weight_decay: 0.01
+
+scheduler:
+  name: "cosine_with_warmup"  # Options: cosine_with_warmup, linear, constant
+  num_warmup_steps: 500
+  num_cycles: 0.5 
+  last_epoch: -1
+
+# Loss function configuration
+loss:
+  name: "cross_entropy"  # Options: cross_entropy, label_smoothing
+  label_smoothing: 0.1
+  reduction: "mean"
+  ignore_index: -100
+
+callbacks:
+  early_stopping:
+    monitor: "val_loss"
+    patience: 3
+    stopping_threshold: 0.001
+    log_rank_zero_only: True
+  model_checkpoint:
+    monitor: "test_loss"
+    save_top_k: 3
+    mode: "min"
+    every_n_epochs: 1
+    enable_version_counter: True
