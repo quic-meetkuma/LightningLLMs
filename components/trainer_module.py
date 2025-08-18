@@ -39,18 +39,23 @@ class CausalLMModule(LightningModule):
         self.loss_config = self.config.get_loss_config()
         self.scheduler_config = self.config.get_scheduler_config()
         self.opt_config = self.config.get_optimizer_config()
-        self.model_cls = ComponentFactory.create_model(**self.model_config)
-        self.model = self.model_cls.load_model()
-        self.tokenizer = self.model_cls.load_tokenizer()
+        model_cls = ComponentFactory.create_model(**self.model_config)
+        self.model = model_cls.load_model()
+        self.tokenizer = model_cls.load_tokenizer()
 
         ## Apply PEFT here.
         self.apply_lora()
-        self.trainable_parameters = [p for n, p in self.model.named_parameters() if p.requires_grad == True]
+
         # Save hyperparameters
         # self.save_hyperparameters()
 
         # Initialize loss function
         self.loss_fn = ComponentFactory.create_loss_function(**self.loss_config)
+
+    def parameters(self):
+        for name, parameter in self.model.named_parameters():
+            if parameter.requires_grad:
+                yield parameter
 
     def apply_lora(self):
         """Apply LoRA to the model if configured."""
@@ -92,24 +97,6 @@ class CausalLMModule(LightningModule):
         )
         return loss
 
-    def validation_step(self, batch, batch_idx):
-        """Validation step."""
-        input_ids = batch["input_ids"]
-        attention_mask = batch["attention_mask"]
-        labels = batch["labels"]
-
-        output = self.forward(
-            input_ids=input_ids,
-            attention_mask=attention_mask,
-            labels=labels,
-        )
-
-        loss = self.loss_fn(output.logits, labels)
-        self.log(
-            "val_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
-        )
-        return loss
-
     def test_step(self, batch, batch_idx):
         """Test step."""
         input_ids = batch["input_ids"]
@@ -131,7 +118,7 @@ class CausalLMModule(LightningModule):
     def configure_optimizers(self):
         """Configure optimizers and learning rate scheduler."""
         optimizer = ComponentFactory.create_optimizer(
-            **self.opt_config, model_params=self.trainable_parameters
+            **self.opt_config, model_params=self.parameters()
         )
 
         max_steps = self.trainer.estimated_stepping_batches
@@ -151,7 +138,7 @@ class CausalLMModule(LightningModule):
 
     def lr_scheduler_step(self, scheduler, optimizer, metric=None):
         scheduler.step()
-    
+
     def generate_summary(self, input_text, max_length=128):
         """Generate summary for input text."""
         # Tokenize input text

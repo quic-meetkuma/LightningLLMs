@@ -23,7 +23,7 @@ from components.component_registry import ComponentFactory
 CALLBACK_CONFIGS = {
     "early_stopping": {
         "name": "early_stopping",
-        "monitor": "val_loss",
+        "monitor": "test_loss",
         "patience": 3,
         "stopping_threshold": 0.001,
         "log_rank_zero_only": True,

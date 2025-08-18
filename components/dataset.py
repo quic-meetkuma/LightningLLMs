@@ -163,7 +163,6 @@ class GenericDataModule(LightningDataModule):
         super().__init__()
         self.tokenizer = None
         self.train_dataset = None
-        self.val_dataset = None
         self.test_dataset = None
 
         self.dataset_config = dataset_config
@@ -174,8 +173,6 @@ class GenericDataModule(LightningDataModule):
         self.dataset_subset = self.dataset_config["dataset_subset"]
         self.train_split_name = self.dataset_config["train_split"]
         self.test_split_name = self.dataset_config["test_split"]
-        self.validation_split_name = self.dataset_config["validation_split"]
-        self.use_validation_split = self.dataset_config["use_validation_split"]
         self.train_batch_size = self.dataset_config["train_batch_size"]
         self.eval_batch_size = self.dataset_config["eval_batch_size"]
         self.num_workers = self.dataset_config["num_workers"]
@@ -195,29 +192,15 @@ class GenericDataModule(LightningDataModule):
             self.dataset_name, name=self.dataset_subset, split=self.train_split_name
         )
 
-        if (
-            self.use_validation_split
-            and self.validation_split_name
-            and self.validation_split_name not in available_splits
-        ):
-            self.use_validation_split = False
-
         if len(available_splits) == 1:
             self.split_ratio = self.dataset_config["split_ratio"]
         else:
-            if self.use_validation_split:
-                load_dataset(
-                    self.dataset_name,
-                    name=self.dataset_subset,
-                    split=self.validation_split_name,
-                )
-
             load_dataset(
                 self.dataset_name, name=self.dataset_subset, split=self.test_split_name
             )
 
     def setup(self, stage=None):
-        """Setup datasets for training, validation, and testing."""
+        """Setup datasets for trainin and testing."""
         # Load tokenizer
         self.tokenizer = AutoTokenizer.from_pretrained(self.tokenizer_name)
 
@@ -228,19 +211,12 @@ class GenericDataModule(LightningDataModule):
             train_data = load_dataset(
                 self.dataset_name, name=self.dataset_subset, split=self.train_split_name
             )
-            if self.split_ratio and self.use_validation_split:
+            if self.split_ratio:
                 splitted_dataset = train_data.train_test_split(
                     test_size=self.split_ratio, seed=self.seed
                 )
                 train_data = splitted_dataset["train"]
-                val_data = splitted_dataset["test"]
-            else:
-                if self.use_validation_split:
-                    val_data = load_dataset(
-                        self.dataset_name,
-                        name=self.dataset_subset,
-                        split=self.validation_split_name,
-                    )
+                test_data = splitted_dataset["test"]
 
             self.train_dataset = ComponentFactory.create_dataset(
                 self.dataset_type,
@@ -249,15 +225,6 @@ class GenericDataModule(LightningDataModule):
                 max_length=self.max_length,
                 extra_params=self.extra_params,
             )
-
-            if self.use_validation_split:
-                self.val_dataset = ComponentFactory.create_dataset(
-                    self.dataset_type,
-                    dataset=train_data,
-                    tokenizer=self.tokenizer,
-                    max_length=self.max_length,
-                    extra_params=self.extra_params,
-                )
 
         if stage == "test" or stage is None:
             if self.split_ratio:
@@ -289,22 +256,8 @@ class GenericDataModule(LightningDataModule):
             shuffle=True,
             pin_memory=True,
             collate_fn=self.collate_fn,
-            persistent_workers=True
+            persistent_workers=True,
         )
-
-    # FIXME: Remove val_dataloader from everywhere.
-    # def val_dataloader(self):
-    #     """Create validation dataloader."""
-    #     if not self.use_validation_split:
-    #         return None
-    #     return DataLoader(
-    #         self.val_dataset,
-    #         batch_size=self.train_batch_size,
-    #         num_workers=self.num_workers,
-    #         shuffle=False,
-    #         pin_memory=True,
-    #         collate_fn=self.collate_fn,
-    #     )
 
     def test_dataloader(self):
         """Create test dataloader."""
@@ -335,7 +288,6 @@ if __name__ == "__main__":
         name: 'cornell-movie-review-data/rotten_tomatoes'
         train_split: 'train'
         test_split: 'test'
-        validation_split: 'validation'
         num_workers: 0
         max_length: null
         input_column: 'text'
@@ -361,7 +313,6 @@ if __name__ == "__main__":
         # Test data loaders
         print("Testing data loaders...")
         train_loader = data_module.train_dataloader()
-        val_loader = data_module.val_dataloader()
         test_loader = data_module.test_dataloader()
 
         # Get a batch from train loader
@@ -371,12 +322,6 @@ if __name__ == "__main__":
             print(f"Input IDs shape: {batch['input_ids'].shape}")
             print(f"Attention mask shape: {batch['attention_mask'].shape}")
             print(f"Labels shape: {batch['labels'].shape}")
-            break
-
-        # Get a batch from validation loader
-        print("Getting a batch from validation loader...")
-        for batch in val_loader:
-            print(f"Validation batch input IDs shape: {batch['input_ids'].shape}")
             break
 
         # Get a batch from test loader

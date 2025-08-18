@@ -23,7 +23,6 @@ from transformers import (
 )
 from utils.dataset_helper import insert_pad_token
 from components.component_registry import registry
-from transformers import BitsAndBytesConfig
 
 from components.logger import get_logger
 
@@ -190,6 +189,8 @@ class HFModel(BaseModel):
 
         quant_config = None
         if self.model_config.get("load_in_4bit", False):
+            from transformers import BitsAndBytesConfig
+
             quant_config = BitsAndBytesConfig(
                 load_in_4bit=True,
                 bnb_4bit_quant_type="nf4",  # Optimal for normal distributions

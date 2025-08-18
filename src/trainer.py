@@ -1,17 +1,16 @@
-'''
- # @ Author: Meet Patel
- # @ Create Time: 2025-08-12 17:22:13
- # @ Modified by: Meet Patel
- # @ Modified time: 2025-08-17 16:28:07
- # @ Description:
- '''
+"""
+# @ Author: Meet Patel
+# @ Create Time: 2025-08-12 17:22:13
+# @ Modified by: Meet Patel
+# @ Modified time: 2025-08-17 16:28:07
+# @ Description:
+"""
 
 import pytorch_lightning as pl
-from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger
-import torch
 from transformers import set_seed
 from components.component_registry import ComponentFactory
+
 
 def create_trainer(config, output_dir):
     """Create PyTorch Lightning trainer with specified configuration."""
@@ -29,10 +28,7 @@ def create_trainer(config, output_dir):
         callbacks.append(callback_inst.callback)
 
     # Logger
-    # FIXME: update tb logger name and directory to output dir.
-    tb_logger = TensorBoardLogger("tb_logs", name="samsum_summarization")
-
-    # FIXME: also add a console/file/csv logger.
+    tb_logger = TensorBoardLogger(output_dir, name="tensorboard_logs")
 
     training_config = config.get_training_config()
     kwargs = {}
@@ -42,7 +38,7 @@ def create_trainer(config, output_dir):
         "gradient_accumulation_steps", 1
     )
     kwargs["deterministic"] = True
-    # kwargs["use_distributed_sampler"] = True
+    kwargs["use_distributed_sampler"] = True
     kwargs["precision"] = training_config.get("precision", "fp32")
     kwargs["accelerator"] = training_config.get("device", "cuda")
     kwargs["devices"] = training_config.get("num_devices", 1)
@@ -50,12 +46,8 @@ def create_trainer(config, output_dir):
     #         kwargs["amp_backend"] = "apex"
     #         kwargs["amp_level"] = "O2"
 
-    kwargs["strategy"] = "auto"
     kwargs["logger"] = tb_logger
-
-    # FIXME: Add different strategies
-    # from lightning.pytorch.strategies import FSDPStrategy, DDPStrategy, DeepSpeedStrategy, SingleDeviceStrategy, ParallelStrategy, ModelParallelStrategy
-    # FSDPStrategy()
+    kwargs["strategy"] = training_config.get("strategy", "auto")
 
     # Trainer
     trainer = pl.Trainer(**kwargs)

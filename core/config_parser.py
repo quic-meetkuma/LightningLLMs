@@ -78,7 +78,6 @@ def main():
 
         # Log final results
         logger.log_rank_zero("Training completed successfully!")
-        logger.log_rank_zero(f"Best validation loss: {results['best_eval_loss']:.4f}")
         logger.log_rank_zero(f"Final epoch: {results['final_epoch']}")
         logger.log_rank_zero(f"Final step: {results['final_step']}")
 

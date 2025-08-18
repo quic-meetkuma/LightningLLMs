@@ -29,8 +29,6 @@ DATASET_CONFIGS = {
         "dataset_subset": "default",
         "train_split": "train",
         "test_split": "test",
-        "validation_split": "validation",
-        "use_validation_split": True,
         "train_batch_size": 4,
         "eval_batch_size": 4,
         "num_workers": 4,
@@ -49,8 +47,6 @@ DATASET_CONFIGS = {
         "dataset_subset": "default",
         "train_split": "train",
         "test_split": "test",
-        "validation_split": "validation",
-        "use_validation_split": True,
         "train_batch_size": 4,
         "eval_batch_size": 4,
         "num_workers": 4,
@@ -72,8 +68,6 @@ DATASET_CONFIGS = {
         "dataset_subset": "default",
         "train_split": "train",
         "test_split": "test",
-        "validation_split": "validation",
-        "use_validation_split": True,
         "train_batch_size": 4,
         "eval_batch_size": 4,
         "num_workers": 0,
@@ -95,8 +89,6 @@ DATASET_CONFIGS = {
         "dataset_subset": "main",
         "train_split": "train",
         "test_split": "test",
-        "validation_split": "validation",
-        "use_validation_split": True,
         "train_batch_size": 4,
         "eval_batch_size": 4,
         "num_workers": 4,
@@ -123,7 +115,6 @@ def test_datasets(dataset_name):
     data_module.prepare_data()
     data_module.setup()
     train_loader = data_module.train_dataloader()
-    val_loader = data_module.val_dataloader()
     test_loader = data_module.test_dataloader()
 
     # Get a batch from train loader
@@ -139,13 +130,6 @@ def test_datasets(dataset_name):
         if config["max_length"] is not None:
             assert batch["input_ids"].shape[1] <= config["max_length"]
         break
-
-    if val_loader is not None:
-        # Get a batch from validation loader
-        print("Getting a batch from validation loader...")
-        for batch in val_loader:
-            assert batch["input_ids"].shape[0] == config["train_batch_size"]
-            break
 
     # Get a batch from test loader
     print("Getting a batch from test loader...")

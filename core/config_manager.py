@@ -61,8 +61,6 @@ class DatasetConfig:
     dataset_subset: str = "default"
     train_split: str = "train"
     test_split: str = "test"
-    validation_split: str = "validation"
-    use_validation_split: bool = True
     train_batch_size: int = 1
     eval_batch_size: int = 1
 
@@ -104,7 +102,6 @@ class CallbackConfig:
     extra_params: Dict[str, Any] = field(default_factory=dict)
 
 
-
 @dataclass
 class TrainingConfig:
     """Configuration for training."""
@@ -114,9 +111,9 @@ class TrainingConfig:
     output_dir: str = "./results"
     gradient_accumulation_steps: int = 1
     num_train_epochs: int = 1
-    precision: str = "fp16-mixed"       # "fp16-mixed", "bf16"
+    precision: str = "fp16-mixed"  # "fp16-mixed", "bf16"
     seed: int = 42
-    device: str = "cuda"          # "cuda", "cpu", "qaic"
+    device: str = "cuda"  # "cuda", "cpu", "qaic"
     num_devices: int = 1
     strategy: str = "ddp"
 
