@@ -17,6 +17,7 @@ from core.config_manager import ConfigManager
 from core.config_parser import create_parser
 from components.dataset import GenericDataModule
 from components.component_registry import ComponentFactory
+from backend import *
 
 
 def main():

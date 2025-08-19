@@ -49,6 +49,14 @@ def create_trainer(config, output_dir):
     kwargs["logger"] = tb_logger
     kwargs["strategy"] = training_config.get("strategy", "auto")
 
+    if kwargs["accelerator"] == "qaic" and (
+        kwargs["strategy"] == "ddp"
+        or (kwargs["strategy"] == "auto" and kwargs["devices"] > 1)
+    ):
+        from backend.qaic_ddp import QaicDDPStrategy
+
+        kwargs["strategy"] = QaicDDPStrategy(process_group_backend="qccl")
+
     # Trainer
     trainer = pl.Trainer(**kwargs)
 
