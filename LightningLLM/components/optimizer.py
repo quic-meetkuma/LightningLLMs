@@ -14,7 +14,7 @@ from abc import ABC, abstractmethod
 
 import torch.optim as optim
 
-from components.component_registry import registry
+from LightningLLM.components.component_registry import registry
 
 
 class BaseOptimizer(ABC):

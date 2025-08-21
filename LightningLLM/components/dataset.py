@@ -18,8 +18,8 @@ from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader, Dataset
 from transformers import AutoTokenizer
 
-from components.component_registry import ComponentFactory, registry
-from utils.dataset_helper import insert_pad_token
+from LightningLLM.components.component_registry import ComponentFactory, registry
+from LightningLLM.utils.dataset_helper import insert_pad_token
 
 
 @registry.dataset("seq_completion")
@@ -273,7 +273,7 @@ class GenericDataModule(LightningDataModule):
 if __name__ == "__main__":
     import yaml
 
-    from core.config_manager import ConfigManager
+    from LightningLLM.components.config_manager import ConfigManager
 
     sample_config = """
     # Sample Dataset configuration

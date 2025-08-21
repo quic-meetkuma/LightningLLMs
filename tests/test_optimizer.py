@@ -17,7 +17,7 @@ import pytest
 import torch
 import torch.nn as nn
 
-from components.component_registry import ComponentFactory
+from LightningLLM.components.component_registry import ComponentFactory
 
 # Setup test data
 OPTIMIZER_CONFIGS = {

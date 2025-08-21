@@ -18,7 +18,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from components.component_registry import registry
+from LightningLLM.components.component_registry import registry
 
 
 class BaseLossFunction(ABC, nn.Module):

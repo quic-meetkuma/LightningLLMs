@@ -8,7 +8,7 @@
 
 import torch
 
-from components.component_registry import registry
+from LightningLLM.components.component_registry import registry
 
 
 @registry.data_collator("dynamic_padding")

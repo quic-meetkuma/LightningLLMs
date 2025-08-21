@@ -11,7 +11,7 @@ from abc import ABC, abstractmethod
 from pytorch_lightning.callbacks import (EarlyStopping, ModelCheckpoint,
                                          ModelSummary)
 
-from components.component_registry import registry
+from LightningLLM.components.component_registry import registry
 
 
 class BaseCallback(ABC):

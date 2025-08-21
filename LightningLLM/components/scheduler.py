@@ -17,7 +17,7 @@ from transformers import (get_constant_schedule_with_warmup,
                           get_cosine_schedule_with_warmup,
                           get_linear_schedule_with_warmup)
 
-from components.component_registry import registry
+from LightningLLM.components.component_registry import registry
 
 
 class BaseScheduler(ABC):

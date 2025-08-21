@@ -15,9 +15,9 @@ import argparse
 import logging
 import sys
 
-from components.component_registry import ComponentFactory
-from components.logger import get_logger
-from core.config_manager import ConfigManager
+from LightningLLM.components.component_registry import ComponentFactory
+from LightningLLM.components.logger import get_logger
+from LightningLLM.components.config_manager import ConfigManager
 
 logger = get_logger()
 

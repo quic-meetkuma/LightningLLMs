@@ -15,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import pytest
 
-from components.component_registry import ComponentFactory
+from LightningLLM.components.component_registry import ComponentFactory
 
 # Setup test data
 CALLBACK_CONFIGS = {

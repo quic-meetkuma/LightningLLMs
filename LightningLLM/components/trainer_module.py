@@ -14,7 +14,7 @@ Training Modules for the training system.
 from peft import LoraConfig, get_peft_model
 from pytorch_lightning import LightningModule
 
-from components.component_registry import ComponentFactory, registry
+from LightningLLM.components.component_registry import ComponentFactory, registry
 
 
 @registry.trainer_module("causal_lm")

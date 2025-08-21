@@ -12,11 +12,11 @@ Main entry point for fine-tuning LLMs on the SAMSum dataset.
 
 from pathlib import Path
 
-from components.component_registry import ComponentFactory
-from components.dataset import GenericDataModule
-from core.config_manager import ConfigManager
-from core.config_parser import create_parser
-from src.trainer import create_trainer
+from LightningLLM.components.component_registry import ComponentFactory
+from LightningLLM.components.dataset import GenericDataModule
+from LightningLLM.components.config_manager import ConfigManager
+from LightningLLM.components.config_parser import create_parser
+from LightningLLM.components.trainer import create_trainer
 
 
 def main():

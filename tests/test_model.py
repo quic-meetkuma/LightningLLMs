@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import pytest
 import torch.nn as nn
 
-from components.component_registry import ComponentFactory
+from LightningLLM.components.component_registry import ComponentFactory
 
 # Setup test data
 MODEL_CONFIGS = {

@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import pytest
 import torch
 
-from components.dataset import GenericDataModule
+from LightningLLM.components.dataset import GenericDataModule
 
 # Setup test data
 DATASET_CONFIGS = {
@@ -68,7 +68,7 @@ DATASET_CONFIGS = {
         "test_split": "test",
         "train_batch_size": 4,
         "eval_batch_size": 4,
-        "num_workers": 0,
+        "num_workers": 1,
         "max_length": None,
         "split_ratio": 0.8,
         "seed": 42,

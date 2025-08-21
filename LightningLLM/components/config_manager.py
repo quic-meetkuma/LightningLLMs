@@ -18,7 +18,7 @@ from typing import Any, Dict, Optional, Union
 
 import yaml
 
-from components.data_collator import dynamic_padding_collate_fn
+from LightningLLM.components.data_collator import dynamic_padding_collate_fn
 
 
 @dataclass
