@@ -14,9 +14,10 @@ including functions to get process rank, world size, and other distributed
 training utilities.
 """
 
+from typing import Any
+
 import torch
 import torch.distributed as dist
-from typing import Any
 
 
 def is_dist_available_and_initialized() -> bool:
@@ -160,9 +161,11 @@ def reduce_dict(input_dict: dict, average: bool = True) -> dict:
 
     # Convert all values to tensors if they aren't already
     values = [
-        torch.as_tensor(value).cuda()
-        if torch.is_tensor(value)
-        else torch.as_tensor(value).cuda()
+        (
+            torch.as_tensor(value).cuda()
+            if torch.is_tensor(value)
+            else torch.as_tensor(value).cuda()
+        )
         for value in values
     ]
 

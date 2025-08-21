@@ -11,14 +11,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+import pytest
 import torch
+import torch.nn as nn
+
+from components.component_registry import ComponentFactory
 
 # This below import will register all the components in the registry
-import components  # noqa: E402
 
-import pytest
-import torch.nn as nn
-from components.component_registry import ComponentFactory
 
 # Setup test data
 SCHEDULER_CONFIGS = {

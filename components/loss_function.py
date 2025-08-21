@@ -13,6 +13,7 @@ Provides BaseLossFunction abstract class and concrete implementations.
 
 from abc import ABC, abstractmethod
 from typing import Any
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -67,6 +68,7 @@ class CrossEntropyLoss(BaseLossFunction):
         self.ignore_index = kwargs.get("ignore_index", -100)
         self.reduction = kwargs.get("reduction", "mean")
         self.label_smoothing = kwargs.get("label_smoothing", 0.0)
+        self.weight = kwargs.get("weight", 1.0)
 
         self.loss_fn = nn.CrossEntropyLoss(
             ignore_index=self.ignore_index,
@@ -93,12 +95,12 @@ class CrossEntropyLoss(BaseLossFunction):
             # Language modeling: shift logits and targets
             shift_logits = logits[..., :-1, :].contiguous()
             shift_targets = targets[..., 1:].contiguous()
-            return self.loss_fn(
+            return self.weight * self.loss_fn(
                 shift_logits.view(-1, shift_logits.size(-1)), shift_targets.view(-1)
             )
         else:
             # Standard classification
-            return self.loss_fn(logits, targets)
+            return self.weight * self.loss_fn(logits, targets)
 
 
 @registry.loss_function("kl_div")
@@ -111,6 +113,7 @@ class KLDivergenceLoss(BaseLossFunction):
         super().__init__(**kwargs)
         self.temperature = kwargs.get("temperature", 4.0)
         self.reduction = kwargs.get("reduction", "batchmean")
+        self.weight = kwargs.get("weight", 1.0)
 
     def forward(self, outputs: Any, targets: Any, **kwargs) -> torch.Tensor:
         """
@@ -134,4 +137,4 @@ class KLDivergenceLoss(BaseLossFunction):
         # Compute KL divergence
         kl_loss = F.kl_div(student_log_probs, teacher_probs, reduction=self.reduction)
 
-        return kl_loss * (self.temperature**2)
+        return self.weight * kl_loss * (self.temperature**2)

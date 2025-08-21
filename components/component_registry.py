@@ -4,7 +4,7 @@ This allows easy registration and retrieval of optimizers, schedulers, datasets,
 """
 
 import logging
-from typing import Any, Dict, Type, Optional
+from typing import Any, Dict, Optional, Type
 
 logger = logging.getLogger(__name__)
 

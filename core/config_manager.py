@@ -11,15 +11,13 @@ Configuration manager for handling all training configurations.
 Provides centralized configuration loading, validation, and management.
 """
 
-import os
-import yaml
 import json
-from dataclasses import dataclass, field, asdict
-from typing import Any, Dict, Optional, Union, List
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
-import logging
+from typing import Any, Dict, Optional, Union
 
-from components.logger import get_logger
+import yaml
+
 from components.data_collator import dynamic_padding_collate_fn
 
 
@@ -27,18 +25,23 @@ from components.data_collator import dynamic_padding_collate_fn
 class OptimizerConfig:
     """Configuration for optimizers."""
 
-    name: str = "adamw"
-    lr: float = 3e-4
+    # Dictionary to hold all optimizers configurations
+    # Key: optimizer name, Value: optimizer configuration dictionary
+    optimizers: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+
     # Additional optimizer-specific parameters
     extra_params: Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
-class LossConfig:
+class LossFunctionConfig:
     """Configuration for loss functions."""
 
-    name: str = "cross_entropy"
-    # Additional loss-specific parameters
+    # Dictionary to hold all loss functions configurations
+    # Key: loss function name, Value: loss function configuration dictionary
+    loss_functions: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+
+    # Additional optimizer-specific parameters
     extra_params: Dict[str, Any] = field(default_factory=dict)
 
 
@@ -108,14 +111,14 @@ class TrainingConfig:
 
     # Model trainer type
     type: str = "causal_lm"
-    output_dir: str = "./results"
+    output_dir: str = "./training_results"
     gradient_accumulation_steps: int = 1
     num_train_epochs: int = 1
     precision: str = "fp16-mixed"  # "fp16-mixed", "bf16"
     seed: int = 42
     device: str = "cuda"  # "cuda", "cpu", "qaic"
     num_devices: int = 1
-    strategy: str = "ddp"
+    strategy: str = "auto"
 
     # Additional training-specific parameters
     extra_params: Dict[str, Any] = field(default_factory=dict)
@@ -132,13 +135,13 @@ class MasterConfig:
     dataset: DatasetConfig = field(default_factory=DatasetConfig)
 
     # Optimizer configuration
-    optimizer: OptimizerConfig = field(default_factory=OptimizerConfig)
+    optimizers: OptimizerConfig = field(default_factory=OptimizerConfig)
 
     # Scheduler configuration
     scheduler: SchedulerConfig = field(default_factory=SchedulerConfig)
 
-    # Loss configuration
-    loss: LossConfig = field(default_factory=LossConfig)
+    # Loss function configuration
+    loss_functions: LossFunctionConfig = field(default_factory=LossFunctionConfig)
 
     # Callbacks configuration
     callbacks: CallbackConfig = field(default_factory=CallbackConfig)
@@ -202,17 +205,17 @@ class ConfigManager:
                     getattr(self.config, key), "__dataclass_fields__"
                 ):
                     # Special handling for callbacks
-                    if key == "callbacks":
+                    if key in ["callbacks", "optimizers", "loss_functions"]:
                         nested_config = getattr(self.config, key)
-                        for callback_name, callback_config in value.items():
-                            if isinstance(callback_config, dict):
-                                getattr(nested_config, "callbacks")[callback_name] = (
-                                    callback_config
+                        for component_name, component_dict in value.items():
+                            if isinstance(component_dict, dict):
+                                getattr(nested_config, key)[component_name] = (
+                                    component_dict
                                 )
                             else:
                                 getattr(nested_config, "extra_params")[
-                                    callback_name
-                                ] = callback_config
+                                    component_name
+                                ] = component_dict
                     else:
                         # Update nested dataclass
                         nested_config = getattr(self.config, key)
@@ -272,10 +275,6 @@ class ConfigManager:
         if self.config.training.gradient_accumulation_steps <= 0:
             errors.append("Gradient accumulation steps must be positive")
 
-        # Validate optimizer configuration
-        if float(self.config.optimizer.lr) <= 0:
-            errors.append("Learning rate must be positive")
-
         # Validate device configuration
         valid_devices = ["cpu", "cuda", "qaic"]
         if self.config.training.device not in valid_devices:
@@ -283,7 +282,7 @@ class ConfigManager:
 
         if errors:
             raise ValueError(
-                f"Configuration validation failed:\n"
+                "Configuration validation failed:\n"
                 + "\n".join(f"- {error}" for error in errors)
             )
 
@@ -295,7 +294,7 @@ class ConfigManager:
 
     def get_optimizer_config(self) -> Dict[str, Any]:
         """Get optimizer configuration as dictionary."""
-        optimizer_dict = asdict(self.config.optimizer)
+        optimizer_dict = asdict(self.config.optimizers)
         optimizer_dict.update(optimizer_dict.pop("extra_params"))
         return optimizer_dict
 
@@ -324,7 +323,7 @@ class ConfigManager:
 
     def get_loss_config(self) -> Dict[str, Any]:
         """Get loss configuration as dictionary."""
-        loss_dict = asdict(self.config.loss)
+        loss_dict = asdict(self.config.loss_functions)
         loss_dict.update(loss_dict.pop("extra_params"))
         return loss_dict
 

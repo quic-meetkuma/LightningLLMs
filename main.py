@@ -12,11 +12,11 @@ Main entry point for fine-tuning LLMs on the SAMSum dataset.
 
 from pathlib import Path
 
-from src.trainer import create_trainer
+from components.component_registry import ComponentFactory
+from components.dataset import GenericDataModule
 from core.config_manager import ConfigManager
 from core.config_parser import create_parser
-from components.dataset import GenericDataModule
-from components.component_registry import ComponentFactory
+from src.trainer import create_trainer
 
 
 def main():

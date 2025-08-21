@@ -11,16 +11,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-import torch
 
 # This below import will register all the components in the registry
-import components  # noqa: E402
 
-import pytest
-import torch.nn as nn
-from components.component_registry import ComponentFactory
-from components.logger import get_logger
 import logging
+
+from components.logger import get_logger
 
 
 def test_logger():

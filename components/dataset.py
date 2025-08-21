@@ -10,17 +10,16 @@
 Dataset components for the training system.
 """
 
-import torch.nn.functional as F
-from typing import Dict, List, Optional
-from torch.utils.data import Dataset
-from torch.utils.data import DataLoader
-from datasets import load_dataset, load_dataset_builder
-from transformers import AutoTokenizer
-from pytorch_lightning import LightningDataModule
-from components.data_collator import dynamic_padding_collate_fn
-from utils.dataset_helper import insert_pad_token
+from typing import Dict
 
-from components.component_registry import registry, ComponentFactory
+import torch.nn.functional as F
+from datasets import load_dataset, load_dataset_builder
+from pytorch_lightning import LightningDataModule
+from torch.utils.data import DataLoader, Dataset
+from transformers import AutoTokenizer
+
+from components.component_registry import ComponentFactory, registry
+from utils.dataset_helper import insert_pad_token
 
 
 @registry.dataset("seq_completion")
@@ -273,6 +272,7 @@ class GenericDataModule(LightningDataModule):
 
 if __name__ == "__main__":
     import yaml
+
     from core.config_manager import ConfigManager
 
     sample_config = """

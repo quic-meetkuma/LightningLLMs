@@ -18,13 +18,11 @@ from typing import Any
 import torch
 import torch.nn as nn
 import transformers
-from transformers import (
-    AutoTokenizer,
-)
-from utils.dataset_helper import insert_pad_token
-from components.component_registry import registry
+from transformers import AutoTokenizer
 
+from components.component_registry import registry
 from components.logger import get_logger
+from utils.dataset_helper import insert_pad_token
 
 logger = get_logger(__name__)
 

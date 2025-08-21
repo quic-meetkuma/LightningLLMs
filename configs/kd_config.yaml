@@ -42,7 +42,23 @@ dataset:
 
 # Training configuration
 training:
-  type: "causal_lm"
+  type: "causal_lm_kd"
+  # Model configuration
+  teacher_model:
+    model_type: "hf"  # Hugging Face model
+    auto_class_name: "AutoModelForCausalLM"
+    model_name: "HuggingFaceTB/SmolLM-135M"  # Pretrained model name
+    load_in_4bit: false
+    use_peft: true
+    peft_config:
+      lora_r: 8
+      lora_alpha: 16
+      lora_dropout: 0.1
+      target_modules: ["q_proj", "v_proj"]
+      bias: "none"  # Options: none, all, lora_only
+      task_type: "CAUSAL_LM"  # Options: CAUSAL_LM, SEQ_2_SEQ_LM, etc.
+      peft_type: "LORA"  # Options: LORA, IA3, etc.
+
   output_dir: "./training_results"
   gradient_accumulation_steps: 1
   num_train_epochs: 1
@@ -50,13 +66,13 @@ training:
   seed: 42
   device: "cuda"
   num_devices: 1
-  strategy: "auto"
+  strategy: "ddp"
 
 # Optimizer configuration
-optimizers:
-  adamw:  # Options: adamw, adam, sgd
-    lr: 5e-5
-    weight_decay: 0.01
+optimizer:
+  name: "adamw"  # Options: adamw, adam, sgd
+  lr: 5e-5
+  weight_decay: 0.01
 
 scheduler:
   name: "cosine_with_warmup"  # Options: cosine_with_warmup, linear, constant
@@ -66,11 +82,13 @@ scheduler:
 
 # Loss function configuration
 loss_functions:
-  cross_entropy:  # Options: cross_entropy, label_smoothing
+  cross_entropy:
     label_smoothing: 0.1
     reduction: "mean"
     ignore_index: -100
-    weight: 1.0
+    weight: 0.5
+  kd_loss:
+    weight: 0.5
 
 callbacks:
   early_stopping:

@@ -7,8 +7,11 @@
 """
 
 from abc import ABC, abstractmethod
+
+from pytorch_lightning.callbacks import (EarlyStopping, ModelCheckpoint,
+                                         ModelSummary)
+
 from components.component_registry import registry
-from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping, ModelSummary
 
 
 class BaseCallback(ABC):

@@ -15,9 +15,9 @@ import argparse
 import logging
 import sys
 
-from core.config_manager import ConfigManager
-from components.logger import get_logger
 from components.component_registry import ComponentFactory
+from components.logger import get_logger
+from core.config_manager import ConfigManager
 
 logger = get_logger()
 

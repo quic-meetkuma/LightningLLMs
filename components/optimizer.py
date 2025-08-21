@@ -10,8 +10,9 @@
 Optimizer components for the training system.
 """
 
-import torch.optim as optim
 from abc import ABC, abstractmethod
+
+import torch.optim as optim
 
 from components.component_registry import registry
 

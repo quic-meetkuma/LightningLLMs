@@ -6,8 +6,6 @@
 # @ Description:
 """
 
-import torch
-
 
 def insert_pad_token(tokenizer):
     # Add pad token if it doesn't exist
