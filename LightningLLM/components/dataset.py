@@ -26,11 +26,12 @@ from LightningLLM.utils.dataset_helper import insert_pad_token
 class SentenceCompletionDataset(Dataset):
     """Generic dataset class which can be used for autoregressive training."""
 
-    def __init__(self, dataset, tokenizer, max_length, **kwargs):
+    def __init__(self, dataset, tokenizer, max_length, split, **kwargs):
         self.dataset = dataset
         self.tokenizer = tokenizer
         self.max_length = max_length
         self.kwargs = kwargs
+        self.split = split
         self.input_column = kwargs.get("extra_params", {}).get("input_column", "text")
 
     def __len__(self):
@@ -68,11 +69,12 @@ class SentenceCompletionDataset(Dataset):
 class ChatMLInstructionFollowingDataset(Dataset):
     """Generic dataset class which can be used for autoregressive training."""
 
-    def __init__(self, dataset, tokenizer, max_length, **kwargs):
+    def __init__(self, dataset, tokenizer, max_length, split, **kwargs):
         self.dataset = dataset
         self.tokenizer = tokenizer
         self.max_length = max_length
         self.kwargs = kwargs
+        self.split = split
         self.extra_params = kwargs.get("extra_params", {})
 
         if "input_columns" not in self.extra_params:
@@ -212,7 +214,7 @@ class GenericDataModule(LightningDataModule):
             )
             if self.split_ratio:
                 splitted_dataset = train_data.train_test_split(
-                    test_size=self.split_ratio, seed=self.seed
+                    test_size=(1 - self.split_ratio), seed=self.seed
                 )
                 train_data = splitted_dataset["train"]
                 test_data = splitted_dataset["test"]
@@ -222,6 +224,7 @@ class GenericDataModule(LightningDataModule):
                 dataset=train_data,
                 tokenizer=self.tokenizer,
                 max_length=self.max_length,
+                split="train",
                 extra_params=self.extra_params,
             )
 
@@ -243,6 +246,7 @@ class GenericDataModule(LightningDataModule):
                 dataset=test_data,
                 tokenizer=self.tokenizer,
                 max_length=self.max_length,
+                split="test",
                 extra_params=self.extra_params,
             )
 

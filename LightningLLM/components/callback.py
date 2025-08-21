@@ -8,8 +8,7 @@
 
 from abc import ABC, abstractmethod
 
-from pytorch_lightning.callbacks import (EarlyStopping, ModelCheckpoint,
-                                         ModelSummary)
+from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint, ModelSummary
 
 from LightningLLM.components.component_registry import registry
 

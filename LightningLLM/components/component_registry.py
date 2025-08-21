@@ -1,4 +1,12 @@
 """
+# @ Author: Meet Patel
+# @ Create Time: 2025-08-21 22:51:08
+# @ Modified by: Meet Patel
+# @ Modified time: 2025-08-21 23:15:19
+# @ Description:
+"""
+
+"""
 Component registry for managing different training components.
 This allows easy registration and retrieval of optimizers, schedulers, datasets, etc.
 """

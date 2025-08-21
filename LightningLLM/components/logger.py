@@ -1,4 +1,12 @@
 """
+# @ Author: Meet Patel
+# @ Create Time: 2025-08-21 22:51:08
+# @ Modified by: Meet Patel
+# @ Modified time: 2025-08-21 23:15:43
+# @ Description:
+"""
+
+"""
 Custom logger module for the training system.
 Supports logging to console and file, with DDP rank-0 logging capabilities.
 """
