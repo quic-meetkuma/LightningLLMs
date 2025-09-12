@@ -92,16 +92,6 @@ class ComponentRegistry:
 
         return decorator
 
-    # def metric(self, name: str):
-    #     """Decorator to register a metric class."""
-
-    #     def decorator(cls: Type):
-    #         self._metrics[name] = cls
-    #         logger.info(f"Registered metric: {name}")
-    #         return cls
-
-    #     return decorator
-
     def loss_function(self, name: str):
         """Decorator to register a loss function class."""
 
@@ -121,16 +111,6 @@ class ComponentRegistry:
             return cls
 
         return decorator
-
-    # def hook(self, name: str):
-    #     """Decorator to register a hook class."""
-
-    #     def decorator(cls: Type):
-    #         self._hooks[name] = cls
-    #         logger.info(f"Registered hook: {name}")
-    #         return cls
-
-    #     return decorator
 
     def get_trainer_module(self, name: str) -> Optional[Type]:
         """Get trainer module class by name."""
@@ -156,10 +136,6 @@ class ComponentRegistry:
         """Get data collator class by name."""
         return self._data_collators.get(name)
 
-    # def get_metric(self, name: str) -> Optional[Type]:
-    #     """Get metric class by name."""
-    #     return self._metrics.get(name)
-
     def get_loss_function(self, name: str) -> Optional[Type]:
         """Get loss function class by name."""
         return self._loss_functions.get(name)
@@ -167,10 +143,6 @@ class ComponentRegistry:
     def get_callback(self, name: str) -> Optional[Type]:
         """Get callback class by name."""
         return self._callbacks.get(name)
-
-    # def get_hook(self, name: str) -> Optional[Type]:
-    #     """Get hook class by name."""
-    #     return self._hooks.get(name)
 
     def list_trainer_modules(self) -> list[str]:
         """List all registered trainer modules."""
@@ -196,10 +168,6 @@ class ComponentRegistry:
         """List all registered data collators."""
         return list(self._data_collators.keys())
 
-    # def list_metrics(self) -> list[str]:
-    #     """List all registered metrics."""
-    #     return list(self._metrics.keys())
-
     def list_loss_functions(self) -> list[str]:
         """List all registered loss functions."""
         return list(self._loss_functions.keys())
@@ -207,10 +175,6 @@ class ComponentRegistry:
     def list_callbacks(self) -> list[str]:
         """List all registered callbacks."""
         return list(self._callbacks.keys())
-
-    # def list_hooks(self) -> list[str]:
-    #     """List all registered hooks."""
-    #     return list(self._hooks.keys())
 
 
 # Global registry instance
@@ -270,16 +234,6 @@ class ComponentFactory:
             )
         return model_class(**kwargs)
 
-    # @staticmethod
-    # def create_metric(name: str, **kwargs) -> Any:
-    #     """Create a metric instance."""
-    #     metric_class = registry.get_metric(name)
-    #     if metric_class is None:
-    #         raise ValueError(
-    #             f"Unknown metric: {name}. Available: {registry.list_metrics()}"
-    #         )
-    #     return metric_class(**kwargs)
-
     @staticmethod
     def create_loss_function(name: str, **kwargs) -> Any:
         """Create a loss function instance."""
@@ -299,13 +253,3 @@ class ComponentFactory:
                 f"Unknown callback: {name}. Available: {registry.list_callbacks()}"
             )
         return callback_class(**kwargs)
-
-    # @staticmethod
-    # def create_hook(name: str, **kwargs) -> Any:
-    #     """Create a hook instance."""
-    #     hook_class = registry.get_hook(name)
-    #     if hook_class is None:
-    #         raise ValueError(
-    #             f"Unknown hook: {name}. Available: {registry.list_hooks()}"
-    #         )
-    #     return hook_class(**kwargs)

@@ -17,33 +17,14 @@ import sys
 
 from LightningLLM.components.component_registry import ComponentFactory
 from LightningLLM.components.logger import get_logger
-from LightningLLM.components.config_manager import ConfigManager
+from LightningLLM.components.config_manager import ConfigManager, parse_arguments
+import os, sys
 
 logger = get_logger()
 
-
-def create_parser() -> argparse.ArgumentParser:
-    """Create argument parser for the new finetuning interface."""
-    parser = argparse.ArgumentParser(
-        description="Modular fine-tuning system for language models",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
-
-    # Configuration file
-    parser.add_argument(
-        "--config",
-        type=str,
-        required=True,
-        help="Path to configuration file (YAML or JSON)",
-    )
-
-    return parser
-
-
 def main():
     """Main entry point for the refactored finetuning system."""
-    parser = create_parser()
-    args = parser.parse_args()
+    args = parse_arguments()
 
     # Create configuration manager
     config_manager = ConfigManager()

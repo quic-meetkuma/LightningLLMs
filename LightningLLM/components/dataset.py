@@ -10,18 +10,19 @@
 Dataset components for the training system.
 """
 
-from typing import Dict
-
+from typing import Dict, Any, Optional
+import re
 import torch.nn.functional as F
 from datasets import load_dataset, load_dataset_builder
 from pytorch_lightning import LightningDataModule
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import Dataset
 from transformers import AutoTokenizer
 
-from LightningLLM.components.component_registry import ComponentFactory, registry
+from LightningLLM.components.component_registry import registry
 from LightningLLM.utils.dataset_helper import insert_pad_token
 
 
+# Used for pretraining
 @registry.dataset("seq_completion")
 class SentenceCompletionDataset(Dataset):
     """Generic dataset class which can be used for autoregressive training."""
@@ -65,6 +66,7 @@ class SentenceCompletionDataset(Dataset):
         }
 
 
+# Used for SFT
 @registry.dataset("chatml_instruction_following")
 class ChatMLInstructionFollowingDataset(Dataset):
     """Generic dataset class which can be used for autoregressive training."""
@@ -157,6 +159,135 @@ class ChatMLInstructionFollowingDataset(Dataset):
         }
 
 
+@registry.dataset("sft_dataset")
+class SFTDataset(Dataset):
+    """
+    A Supervised Fine-Tuning (SFT) dataset class for text data.
+
+    This class handles loading data from Hugging Face datasets, filtering out invalid samples,
+    and applying a prompt/completion templating for SFT tasks.
+
+    Args:
+        dataset_name (str): The name of the dataset to load from Hugging Face datasets.
+        split (str): The dataset split to use (e.g., "train", "validation", "test").
+        prompt_template (str): A string template for constructing the prompt. Variables in the
+                                template should be enclosed in curly braces, e.g., "Answer the question: {question}".
+        completion_template (str): A string template for constructing the completion (target).
+                                   Variables should be enclosed in curly braces, e.g., "{answer}".
+
+    Raises:
+        RuntimeError: If any variables specified in `prompt_template` or `completion_template`
+                      are not found as columns in the loaded dataset.
+    """
+    def __init__(
+        self,
+        dataset_name: str,
+        split: str,
+        prompt_template: str,
+        completion_template: str,
+        split_ratio: float = 0.8,
+        seed: int = 42,
+        **kwargs,
+    ):
+        db = load_dataset_builder(dataset_name)
+        available_splits = list(db.info.splits.keys())
+
+        if split not in available_splits and "train" not in available_splits:
+            raise ValueError(f"Split {split} is not available.")
+
+        # FIXME: Add streaming support for larger datasets.
+        self.dataset = load_dataset(
+            dataset_name, split=split
+        )
+        if split == "test" and len(available_splits) == 1:
+            split_ratio = split_ratio
+            splitted_dataset = self.dataset.train_test_split(
+                test_size=(1 - split_ratio), seed=seed
+            )
+            self.dataset = splitted_dataset["test"]
+
+        self.prompt_template = prompt_template
+        self.completion_template = completion_template
+        self.dataset_columns = self.dataset.column_names
+        
+        # Extract variables from templates and check if they exist in dataset columns
+        prompt_variables = re.findall(r"\{(.*?)\}", self.prompt_template)
+        completion_variables = re.findall(r"\{(.*?)\}", self.completion_template)
+        
+        for var in prompt_variables:
+            if var not in self.dataset_columns:
+                raise RuntimeError(f"Prompt template variable '{var}' not found in dataset columns: {self.dataset_columns}.")
+        for var in completion_variables:
+            if var not in self.dataset_columns:
+                raise RuntimeError(f"Completion template variable '{var}' not found in dataset columns: {self.dataset_columns}.")
+        
+        # Filter out samples with None or empty strings in relevant columns
+        # Only filter columns that are actually used in the templates
+        self.relevant_columns = list(set(prompt_variables + completion_variables))
+        self.dataset = self.dataset.filter(self._filter_empty_or_none_samples)
+        self.dataset = self.dataset.map(self._preprocess_sample)
+
+    def _filter_empty_or_none_samples(self, example: Dict[str, Any]) -> bool:
+        """
+        Filters out samples where any of the relevant columns are None or contain only whitespace.
+
+        Args:
+            example (Dict[str, Any]): A single sample from the dataset.
+
+        Returns:
+            bool: True if the sample should be kept, False otherwise.
+        """
+        for column in self.relevant_columns:
+            value = example.get(column)
+            if value is None or (isinstance(value, str) and not value.strip()):
+                return False
+        return True
+
+    def _preprocess_sample(self, example: Dict[str, Any]) -> Dict[str, str]:
+        """
+        Applies the prompt and completion templates to a single example.
+
+        Args:
+            example (Dict[str, Any]): A single sample from the dataset.
+
+        Returns:
+            Dict[str, str]: A dictionary containing the 'prompt' and 'completion' strings.
+        """
+        return {
+            "prompt": self.prompt_template.format(**example),
+            "completion": self.completion_template.format(**example),
+        }
+        
+    def __len__(self) -> int:
+        """
+        Returns the number of samples in the dataset.
+
+        Returns:
+            int: The total number of samples.
+        """
+        return self.dataset.num_rows
+
+    def __getitem__(self, idx: int) -> Dict[str, str]:
+        """
+        Retrieves a processed sample from the dataset at the given index.
+
+        Args:
+            idx (int): The index of the sample to retrieve.
+
+        Returns:
+            Dict[str, str]: A dictionary containing the processed 'prompt' and 'completion' for the sample.
+        """
+        # Get the raw example using .select and access the first element
+        example = self.dataset.select(indices=[int(idx)])[0]
+
+        # Apply preprocessing (templating) on the fly
+        processed_example = self._preprocess_sample(example)
+        
+        return processed_example
+
+
+
+
 class GenericDataModule(LightningDataModule):
     """Data module for all the datasets."""
 
@@ -182,6 +313,7 @@ class GenericDataModule(LightningDataModule):
         self.extra_params = self.dataset_config.get("extra_params", {})
         self.collate_fn_name = self.dataset_config.get("collate_fn", "dynamic_padding")
         self.collate_fn = registry.get_data_collator(self.collate_fn_name)
+        self.prepare_data()
 
     def prepare_data(self):
         """Download and prepare data."""
@@ -208,70 +340,77 @@ class GenericDataModule(LightningDataModule):
         insert_pad_token(self.tokenizer)
 
         # Load datasets
-        if stage == "fit" or stage is None:
-            train_data = load_dataset(
-                self.dataset_name, name=self.dataset_subset, split=self.train_split_name
-            )
-            if self.split_ratio:
-                splitted_dataset = train_data.train_test_split(
-                    test_size=(1 - self.split_ratio), seed=self.seed
-                )
-                train_data = splitted_dataset["train"]
-                test_data = splitted_dataset["test"]
-
-            self.train_dataset = ComponentFactory.create_dataset(
-                self.dataset_type,
-                dataset=train_data,
-                tokenizer=self.tokenizer,
-                max_length=self.max_length,
-                split="train",
-                extra_params=self.extra_params,
-            )
-
-        if stage == "test" or stage is None:
-            if self.split_ratio:
-                splitted_dataset = train_data.train_test_split(
-                    test_size=self.split_ratio, seed=self.seed
-                )
-                test_data = splitted_dataset["test"]
-            else:
-                test_data = load_dataset(
-                    self.dataset_name,
-                    name=self.dataset_subset,
-                    split=self.test_split_name,
-                )
-
-            self.test_dataset = ComponentFactory.create_dataset(
-                self.dataset_type,
-                dataset=test_data,
-                tokenizer=self.tokenizer,
-                max_length=self.max_length,
-                split="test",
-                extra_params=self.extra_params,
-            )
-
-    def train_dataloader(self):
-        """Create training dataloader."""
-        return DataLoader(
-            self.train_dataset,
-            batch_size=self.train_batch_size,
-            num_workers=self.num_workers,
-            shuffle=True,
-            pin_memory=True,
-            collate_fn=self.collate_fn,
-            persistent_workers=True,
+        train_data = load_dataset(
+            self.dataset_name, name=self.dataset_subset, split=self.train_split_name
         )
+        if self.split_ratio:
+            splitted_dataset = train_data.train_test_split(
+                test_size=(1 - self.split_ratio), seed=self.seed
+            )
+            train_data = splitted_dataset["train"]
+            test_data = splitted_dataset["test"]
+        else:
+            test_data = load_dataset(
+                self.dataset_name,
+                name=self.dataset_subset,
+                split=self.test_split_name,
+            )
 
-    def test_dataloader(self):
-        """Create test dataloader."""
-        return DataLoader(
-            self.test_dataset,
-            batch_size=self.eval_batch_size,
-            num_workers=self.num_workers,
-            shuffle=False,
-            pin_memory=True,
-            collate_fn=self.collate_fn,
-        )
+        # self.train_dataset = ComponentFactory.create_dataset(
+        #     self.dataset_type,
+        #     dataset=train_data,
+        #     tokenizer=self.tokenizer,
+        #     max_length=self.max_length,
+        #     split="train",
+        #     extra_params=self.extra_params,
+        # )
+        # from torch.utils.data import Subset
+        # self.train_dataset = Subset(self.train_dataset, indices=range(0, 320))
+
+        # self.test_dataset = ComponentFactory.create_dataset(
+        #     self.dataset_type,
+        #     dataset=test_data,
+        #     tokenizer=self.tokenizer,
+        #     max_length=self.max_length,
+        #     split="test",
+        #     extra_params=self.extra_params,
+        # )
+        # self.test_dataset = Subset(self.test_dataset, indices=range(0, 320))
+
+        prompt_completion_example = {"prompt": "The sky is", "completion": " blue."}
+
+        def preprocess_function(example):
+            return {
+                "prompt": example['dialogue'],
+                "completion": example['summary'],
+            }
+
+        dataset = train_data.map(preprocess_function, remove_columns=["dialogue", "summary"])
+        import pdb; pdb.set_trace()
+        print(next(iter(dataset["train"])))
+
+    # def train_dataloader(self):
+    #     """Create training dataloader."""
+    #     return DataLoader(
+    #         self.train_dataset,
+    #         batch_size=self.train_batch_size,
+    #         num_workers=self.num_workers,
+    #         shuffle=True,
+    #         pin_memory=True,
+    #         collate_fn=self.collate_fn,
+    #         persistent_workers=True,
+    #     )
+
+    # def test_dataloader(self):
+    #     """Create test dataloader."""
+    #     return DataLoader(
+    #         self.test_dataset,
+    #         batch_size=self.eval_batch_size,
+    #         num_workers=self.num_workers,
+    #         shuffle=False,
+    #         pin_memory=True,
+    #         collate_fn=self.collate_fn,
+    #     )
 
 
 if __name__ == "__main__":

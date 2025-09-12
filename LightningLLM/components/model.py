@@ -24,6 +24,8 @@ from LightningLLM.components.component_registry import registry
 from LightningLLM.components.logger import get_logger
 from LightningLLM.utils.dataset_helper import insert_pad_token
 
+from peft import LoraConfig, PeftConfig, get_peft_model
+
 logger = get_logger(__name__)
 
 
@@ -171,6 +173,20 @@ class HFModel(BaseModel):
         super().__init__(model_name, **kwargs)
         self.auto_class_name = auto_class_name
         self.tokenizer_name = kwargs.get("tokenizer_name", model_name)
+        self.use_peft = self.model_config.get("use_peft", False)
+        self.lora_config = None
+        if self.use_peft:
+            peft_config = self.model_config.get("peft_config", {})
+
+            self.lora_config = LoraConfig(
+                r=peft_config.get("lora_r"),
+                lora_alpha=peft_config.get("lora_alpha"),
+                target_modules=peft_config.get("target_modules"),
+                lora_dropout=peft_config.get("lora_dropout"),
+                bias=peft_config.get("bias"),
+                task_type="CAUSAL_LM",
+            )
+
 
     def load_model(self) -> nn.Module:
         """Load Hugging Face model based on task type."""
@@ -200,11 +216,12 @@ class HFModel(BaseModel):
         model = hf_cls.from_pretrained(
             self.model_name,
             use_cache=self.model_config.get("use_cache"),
-            torch_dtype=self.model_config.get("torch_dtype"),
+            dtype=self.model_config.get("torch_dtype"),
             attn_implementation=self.model_config.get("attn_implementation"),
             device_map=self.model_config.get("device_map"),
             quantization_config=quant_config,
         )
+
         return model
 
     def load_tokenizer(self) -> AutoTokenizer:
@@ -216,3 +233,7 @@ class HFModel(BaseModel):
         insert_pad_token(tokenizer)
 
         return tokenizer
+
+    def load_peft_config(self) -> PeftConfig:
+        """Load the PEFT config."""
+        return self.lora_config
