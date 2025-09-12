@@ -106,6 +106,11 @@ def main():
     trainer_config["dataloader_num_workers"] = dataset_config.get("num_workers", 1)
     trainer_config["group_by_length"] = dataset_config.get("group_by_length", True)
     
+    # Set DDP configurations
+    if trainer_config.get("ddp_config", None) is not None:
+        ddp_config = trainer_config.pop('ddp_config')
+        trainer_config = {**trainer_config, **ddp_config}
+            
     trainer_type = trainer_config.pop("type", "base")
     if trainer_type == "base":
         trainer_cls = Trainer

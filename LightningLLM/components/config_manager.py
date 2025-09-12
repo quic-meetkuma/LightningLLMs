@@ -254,7 +254,7 @@ class DdpConfig:
         metadata={"help": "Whether to find unused parameters in DDP."},
     )
     ddp_bucket_cap_mb: Optional[int] = field(
-        default=None,
+        default=25,
         metadata={"help": "The bucket size in MB for DDP communication."},
     )
     ddp_broadcast_buffers: bool = field(
@@ -599,27 +599,27 @@ class ConfigManager:
 
     def get_callback_config(self) -> Dict[str, Any]:
         """Get callback configuration as dictionary."""
-        return asdict(self.config.callbacks)
+        return self.config.callbacks
 
     def get_optimizer_config(self) -> Dict[str, Any]:
         """Get optimizer configuration as dictionary."""
-        return asdict(self.config.optimizers)
+        return self.config.optimizers
 
     def get_training_config(self) -> Dict[str, Any]:
         """Get training configuration as dictionary."""
-        return asdict(self.config.training)
+        return self.config.training
 
     def get_scheduler_config(self) -> Dict[str, Any]:
         """Get scheduler configuration as dictionary."""
-        return asdict(self.config.scheduler)
+        return self.config.scheduler
 
     def get_dataset_config(self) -> Dict[str, Any]:
         """Get dataset configuration as dictionary."""
-        return asdict(self.config.dataset)
+        return self.config.dataset
 
     def get_model_config(self) -> Dict[str, Any]:
         """Get model configuration as dictionary."""
-        return asdict(self.config.model)
+        return self.config.model
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert configuration to dictionary."""

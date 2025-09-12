@@ -7,3 +7,5 @@ tensorboard>=2.5.0
 pyyaml>=5.4.0
 lightning>=2.5.3
 peft>=0.17.0
+trackio>=0.3.4
+trl>=0.23.0

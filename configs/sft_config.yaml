@@ -93,9 +93,9 @@ training:
   # Uncomment below ddp block to configure DDP params
   ddp_config: 
     ddp_backend: "qccl"
-    ddp_find_unused_parameters: True
-    ddp_bucket_cap_mb: none
-    ddp_broadcast_buffers: False
+    ddp_find_unused_parameters: False
+    ddp_bucket_cap_mb: 25
+    ddp_broadcast_buffers: null
     ddp_timeout: 1800
 
   # Uncomment below to explicitly run on CPU
