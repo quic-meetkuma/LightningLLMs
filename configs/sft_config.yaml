@@ -28,7 +28,6 @@ dataset:
   dataset_type: "sft_dataset"
   # dataset_name: "Arthur-LAGACHERIE/very-smollm-corpus-0.5M"
   dataset_name: "knkarthick/samsum"
-  dataset_subset: "main"
   train_split: "train"
   max_seq_length: 512
   split_ratio: 0.8  # Ratio for train/test split, used when only train_split is provided
@@ -42,34 +41,34 @@ dataset:
   persistent_workers: True
   prefetch_factor: 1
   drop_last: False
-  
+
 # Training configuration
 training:
   type: "sft"
   output_dir: "./training_results"
   overwrite_output_dir: False
   seed: 42
-  
+
   do_eval: True
   eval_strategy: "epoch"
   eval_steps: 100
-  
+
   per_device_train_batch_size: 2
   per_device_eval_batch_size: 2
   gradient_accumulation_steps: 1
   num_train_epochs: 1
   max_steps: -1
-  
+
   log_level: "info"
   log_on_each_node: True
   logging_strategy: "steps"
   logging_steps: 10
-  
+
   save_strategy: "epoch"
   save_steps: 100   # If 'save_strategy' is 'steps' then it will be used.
   save_total_limit: 5
   metric_for_best_model: "eval_loss"
-  
+
   dtype: "fp16"
   completion_only_loss: True
   report_to: "trackio"
@@ -84,14 +83,14 @@ training:
 
   # Uncomment below deepspeed block to enable DeepSpeed training
   # deepspeed_config:
-  #   abc: 10 
+  #   abc: 10
 
   # Uncomment below accelerate block to enable accelerate training
-  # accelerator_config: 
+  # accelerator_config:
   #   even_batches: True
 
   # Uncomment below ddp block to configure DDP params
-  ddp_config: 
+  ddp_config:
     ddp_backend: "qccl"
     ddp_find_unused_parameters: False
     ddp_bucket_cap_mb: 25
@@ -107,7 +106,7 @@ training:
 
   # Uncomment below block to enable and configure gradient checkpointing.
   gradient_checkpointing: False
-  gradient_checkpointing_kwargs: 
+  gradient_checkpointing_kwargs:
     preserve_rng_state : True
     use_reenrant: False
 
@@ -132,7 +131,7 @@ optimizers:
 # “inverse_sqrt” → transformers.get_inverse_sqrt_schedule
 
 scheduler:
-  scheduler_name: "cosine"  
+  scheduler_name: "cosine"
   warmup_steps: 100   # warmup_steps or warmup_ratio
   warmup_ratio: 0.1
 
@@ -149,4 +148,4 @@ callbacks:
     early_stopping_patience: 3
     early_stopping_threshold: 0.001
   tensorboard:
-    
+
