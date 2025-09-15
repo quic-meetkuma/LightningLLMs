@@ -13,13 +13,13 @@ Main entry point for fine-tuning LLMs on the SAMSum dataset.
 from LightningLLM.components.component_registry import ComponentFactory
 from LightningLLM.components.config_manager import ConfigManager, parse_arguments
 from transformers import Trainer
-from transformers.training_args import TrainingArguments
+from transformers.training_args import TrainingArguments, is_accelerate_available
 import os
 from trl.trainer.sft_config import SFTConfig
 from trl.trainer.sft_trainer import SFTTrainer
 from LightningLLM.components.dataset import SFTDataset
 from LightningLLM.utils.helper import get_callbacks, get_optimizer
-
+import yaml
 
 def main():
     """Main entry point for training."""
@@ -104,6 +104,26 @@ def main():
         kwargs = {"peft_config": peft_config}
     else:
         raise ValueError(f"Invalid trainer type: {trainer_type}")
+    
+    fsdp_config_path = trainer_config.get("fsdp_config", None)
+    if fsdp_config_path:
+        # Open and load the YAML file
+        with open(fsdp_config_path, 'r') as file:
+            fsdp_config = yaml.safe_load(file)
+
+        parallelism_dict = fsdp_config.get("parallelism_config", None)
+        if parallelism_dict is not None:
+            if is_accelerate_available("1.10.1"):
+                from accelerate.parallelism_config import ParallelismConfig
+            else:
+                raise RuntimeError("Accelerate package with 1.10.1 version not found.")
+            parallelism_config = ParallelismConfig(
+                dp_replicate_size=parallelism_dict.get("dp_replicate_size", 1),
+                dp_shard_size=parallelism_dict.get("dp_shard_size", 1),
+                tp_size=parallelism_dict.get("tp_size", 1),
+                cp_size=parallelism_dict.get("cp_size", 1),
+            )
+        trainer_config["parallelism_config"] = parallelism_config
     
     args = args_cls(**trainer_config)
     

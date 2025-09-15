@@ -74,17 +74,13 @@ training:
   # disable_tqdm: True
 
   # Uncomment below fsdp block to enable FSDP training
-  # fsdp_config:
-  #   type: "full_shard"
-  #   activation_checkpointing: True
+  # fsdp: "full_shard"
+  # fsdp_config: "./configs/accelerate/fsdp_config.yaml"
+  # fsdp_config: "./configs/accelerate/fsdp_tp_parallelism_config.yaml"
 
   # Uncomment below deepspeed block to enable DeepSpeed training
   # deepspeed_config:
   #   abc: 10
-
-  # Uncomment below accelerate block to enable accelerate training
-  # accelerator_config:
-  #   even_batches: True
 
   # Uncomment below ddp block to configure DDP params
   ddp_config:
