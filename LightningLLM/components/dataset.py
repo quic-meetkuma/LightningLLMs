@@ -193,6 +193,7 @@ class SFTDataset(Dataset):
         completion_template = kwargs.get("completion_template", None)
         prompt_func = kwargs.get("prompt_func", None)
         completion_func = kwargs.get("completion_func", None)
+        remove_samples_with_empty_columns = kwargs.get("remove_samples_with_empty_columns", True)
         
         if (prompt_template is None and prompt_func is None) and (prompt_template is not None and prompt_func is not None):
             raise RuntimeError("Either provide prompt_template or prompt_func in the config.")
@@ -250,7 +251,8 @@ class SFTDataset(Dataset):
         # Filter out samples with None or empty strings in relevant columns
         # Only filter columns that are actually used in the templates
         self.relevant_columns = list(set(prompt_variables + completion_variables))
-        self.dataset = self.dataset.filter(self._filter_empty_or_none_samples)
+        if remove_samples_with_empty_columns:
+            self.dataset = self.dataset.filter(self._filter_empty_or_none_samples)
         self.dataset = self.dataset.map(self._preprocess_sample)
 
     def import_func(self, func_path: str) -> Callable:

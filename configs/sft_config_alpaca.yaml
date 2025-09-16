@@ -33,6 +33,7 @@ dataset:
   test_split: "test"
   prompt_func: "LightningLLM.preprocessing.alpaca_func:create_alpaca_prompt"
   completion_template: "{output}"    # Model will be trained on this part.
+  remove_samples_with_empty_columns: False
   group_by_length: True
   num_workers: 4
   pin_memory: True
