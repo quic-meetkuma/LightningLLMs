@@ -86,15 +86,15 @@ training:
   #   abc: 10
 
   # Uncomment below ddp block to configure DDP params
-  ddp_config:
-    ddp_backend: "qccl"
-    ddp_find_unused_parameters: False
-    ddp_bucket_cap_mb: 25
-    ddp_broadcast_buffers: null
-    ddp_timeout: 1800
+  # ddp_config:
+  #   ddp_backend: "qccl"
+  #   ddp_find_unused_parameters: False
+  #   ddp_bucket_cap_mb: 25
+  #   ddp_broadcast_buffers: null
+  #   ddp_timeout: 1800
 
   # Uncomment below to explicitly run on CPU
-  # use_cpu: False
+  use_cpu: False
 
   # Uncomment and populate to resume training
   # resume_from_checkpoint: "./abc"

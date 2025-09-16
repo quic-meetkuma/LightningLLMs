@@ -17,7 +17,8 @@ from datasets import load_dataset, load_dataset_builder
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import Dataset
 from transformers import AutoTokenizer
-
+from typing import Callable
+import importlib
 from LightningLLM.components.component_registry import registry
 from LightningLLM.utils.dataset_helper import insert_pad_token
 
@@ -183,23 +184,36 @@ class SFTDataset(Dataset):
         self,
         dataset_name: str,
         split: str,
-        prompt_template: str,
-        completion_template: str,
         split_ratio: float = 0.8,
         seed: int = 42,
         **kwargs,
     ):
+        
+        prompt_template = kwargs.get("prompt_template", None)
+        completion_template = kwargs.get("completion_template", None)
+        prompt_func = kwargs.get("prompt_func", None)
+        completion_func = kwargs.get("completion_func", None)
+        
+        if (prompt_template is None and prompt_func is None) and (prompt_template is not None and prompt_func is not None):
+            raise RuntimeError("Either provide prompt_template or prompt_func in the config.")
+        if (completion_template is None and completion_func is None) and (completion_template is not None and completion_func is not None):
+            raise RuntimeError("Either provide completion_template or completion_func in the config.")
+        
         db = load_dataset_builder(dataset_name)
         available_splits = []
         if db.info.splits is not None:
             available_splits = list(db.info.splits.keys())
 
-        if split not in available_splits and "train" not in available_splits:
+        if split not in available_splits and split == "train":
             raise ValueError(f"Split {split} is not available for dataset {dataset_name}.")
+
+        load_split = split
+        if split not in available_splits:
+            load_split = "train"
 
         # FIXME: Add streaming support for larger datasets.
         self.dataset = load_dataset(
-            dataset_name, split=split
+            dataset_name, split=load_split
         )
         if split == "test" and len(available_splits) == 1:
             split_ratio = split_ratio
@@ -208,26 +222,50 @@ class SFTDataset(Dataset):
             )
             self.dataset = splitted_dataset["test"]
 
-        self.prompt_template = prompt_template
-        self.completion_template = completion_template
         self.dataset_columns = self.dataset.column_names
-        
-        # Extract variables from templates and check if they exist in dataset columns
-        prompt_variables = re.findall(r"\{(.*?)\}", self.prompt_template)
-        completion_variables = re.findall(r"\{(.*?)\}", self.completion_template)
-        
-        for var in prompt_variables:
-            if var not in self.dataset_columns:
-                raise RuntimeError(f"Prompt template variable '{var}' not found in dataset columns: {self.dataset_columns}.")
-        for var in completion_variables:
-            if var not in self.dataset_columns:
-                raise RuntimeError(f"Completion template variable '{var}' not found in dataset columns: {self.dataset_columns}.")
-        
+        if prompt_template:
+            self.prompt_template = prompt_template
+            self.prompt_func = None
+            # Extract variables from templates and check if they exist in dataset columns
+            prompt_variables = re.findall(r"\{(.*?)\}", self.prompt_template)
+            for var in prompt_variables:
+                if var not in self.dataset_columns:
+                    raise RuntimeError(f"Prompt template variable '{var}' not found in dataset columns: {self.dataset_columns}.")
+        else:
+            prompt_variables = self.dataset_columns
+            self.prompt_func = self.import_func(prompt_func)
+            
+        if completion_template:
+            self.completion_template = completion_template
+            self.completion_func = None
+            # Extract variables from templates and check if they exist in dataset columns
+            completion_variables = re.findall(r"\{(.*?)\}", self.completion_template)
+            for var in completion_variables:
+                if var not in self.dataset_columns:
+                    raise RuntimeError(f"Completion template variable '{var}' not found in dataset columns: {self.dataset_columns}.")
+        else:
+            completion_variables = self.dataset_columns
+            self.completion_func = self.import_func(completion_func)
+            
         # Filter out samples with None or empty strings in relevant columns
         # Only filter columns that are actually used in the templates
         self.relevant_columns = list(set(prompt_variables + completion_variables))
         self.dataset = self.dataset.filter(self._filter_empty_or_none_samples)
         self.dataset = self.dataset.map(self._preprocess_sample)
+
+    def import_func(self, func_path: str) -> Callable:
+        if ":" not in func_path:
+            raise ValueError("func_path must be in the format 'module_file_path:function_name'.")
+        module_file_path, function_name = func_path.split(":")
+
+        try:
+            module = importlib.import_module(module_file_path)
+        except Exception as e:
+            raise RuntimeError(f"Unable to import module : {module_file_path}.")
+        if not hasattr(module, function_name):
+            raise ValueError(f"Function {function_name} not found in module {module_file_path}.")
+        return getattr(module, function_name)
+
 
     def _filter_empty_or_none_samples(self, example: Dict[str, Any]) -> bool:
         """
@@ -255,9 +293,11 @@ class SFTDataset(Dataset):
         Returns:
             Dict[str, str]: A dictionary containing the 'prompt' and 'completion' strings.
         """
+        prompt_text = self.prompt_func(example) if self.prompt_func is not None else self.prompt_template.format(**example)
+        completion_text = self.completion_func(example) if self.completion_func is not None else self.completion_template.format(**example)
         return {
-            "prompt": self.prompt_template.format(**example),
-            "completion": self.completion_template.format(**example),
+            "prompt": prompt_text,
+            "completion": completion_text,
         }
         
     def __len__(self) -> int:

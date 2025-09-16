@@ -10,13 +10,13 @@
 model:
   model_type: "hf"  # Hugging Face model
   auto_class_name: "AutoModelForCausalLM"
-  model_name: "HuggingFaceTB/SmolLM-135M"  # Pretrained model name
+  model_name: "meta-llama/Llama-3.2-1B"  # Pretrained model name
   load_in_4bit: false
   use_peft: true
   peft_config:
-    lora_r: 8
-    lora_alpha: 16
-    lora_dropout: 0.1
+    lora_r: 16
+    lora_alpha: 32
+    lora_dropout: 0.05
     target_modules: ["q_proj", "v_proj"]
     bias: "none"  # Options: none, all, lora_only
     task_type: "CAUSAL_LM"  # Options: CAUSAL_LM, SEQ_2_SEQ_LM, etc.
@@ -24,14 +24,15 @@ model:
 
 # Dataset configuration
 dataset:
-  tokenizer_name: "HuggingFaceTB/SmolLM-135M"
-  dataset_type: "seq_completion"
-  # dataset_name: "Arthur-LAGACHERIE/very-smollm-corpus-0.5M"
-  dataset_name: "knkarthick/samsum"
+  tokenizer_name: "meta-llama/Llama-3.2-1B"
+  dataset_type: "sft_dataset"
+  dataset_name: "tatsu-lab/alpaca"
   train_split: "train"
   max_seq_length: 512
   split_ratio: 0.8  # Ratio for train/test split, used when only train_split is provided
   test_split: "test"
+  prompt_func: "LightningLLM.preprocessing.alpaca_func:create_alpaca_prompt"
+  completion_template: "{output}"    # Model will be trained on this part.
   group_by_length: True
   num_workers: 4
   pin_memory: True
@@ -111,7 +112,7 @@ training:
 # Optimizer configuration
 optimizers:
   optimizer_name: "adamw"
-  lr: 5e-5
+  lr: 3e-4
   weight_decay: 0.01
 
 
