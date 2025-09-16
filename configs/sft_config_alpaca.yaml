@@ -14,8 +14,8 @@ model:
   load_in_4bit: false
   use_peft: true
   peft_config:
-    lora_r: 16
-    lora_alpha: 32
+    lora_r: 8
+    lora_alpha: 16
     lora_dropout: 0.05
     target_modules: ["q_proj", "v_proj"]
     bias: "none"  # Options: none, all, lora_only
@@ -28,7 +28,7 @@ dataset:
   dataset_type: "sft_dataset"
   dataset_name: "tatsu-lab/alpaca"
   train_split: "train"
-  max_seq_length: 512
+  max_seq_length: null
   split_ratio: 0.8  # Ratio for train/test split, used when only train_split is provided
   test_split: "test"
   prompt_func: "LightningLLM.preprocessing.alpaca_func:create_alpaca_prompt"
@@ -50,12 +50,12 @@ training:
 
   do_eval: True
   eval_strategy: "epoch"
-  eval_steps: 100
+  # eval_steps: 100
 
   per_device_train_batch_size: 1
   per_device_eval_batch_size: 1
-  gradient_accumulation_steps: 1
-  num_train_epochs: 1
+  gradient_accumulation_steps: 4
+  num_train_epochs: 5
   max_steps: -1
 
   log_level: "info"
@@ -64,7 +64,7 @@ training:
   logging_steps: 10
 
   save_strategy: "epoch"
-  save_steps: 100   # If 'save_strategy' is 'steps' then it will be used.
+  # save_steps: 100   # If 'save_strategy' is 'steps' then it will be used.
   save_total_limit: 5
   metric_for_best_model: "eval_loss"
 
@@ -85,12 +85,12 @@ training:
   #   abc: 10
 
   # Uncomment below DDP block to enable DDP training and configure DDP params
-  # ddp_config:
-  #   ddp_backend: "qccl"
-  #   ddp_find_unused_parameters: False
-  #   ddp_bucket_cap_mb: 25
-  #   ddp_broadcast_buffers: null
-  #   ddp_timeout: 1800
+  ddp_config:
+    ddp_backend: "qccl"
+    ddp_find_unused_parameters: False
+    ddp_bucket_cap_mb: 25
+    ddp_broadcast_buffers: null
+    ddp_timeout: 1800
 
   # Uncomment below to explicitly run on CPU
   use_cpu: False
