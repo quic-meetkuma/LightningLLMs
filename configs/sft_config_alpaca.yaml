@@ -89,7 +89,7 @@ training:
     ddp_backend: "qccl"
     ddp_find_unused_parameters: False
     ddp_bucket_cap_mb: 25
-    ddp_broadcast_buffers: null
+    ddp_broadcast_buffers: True
     ddp_timeout: 1800
 
   # Uncomment below to explicitly run on CPU
@@ -105,10 +105,10 @@ training:
     preserve_rng_state : True
     use_reenrant: False
 
-  torch_compile: True
-  include_tokens_per_second: True
-  include_num_input_tokens_seen: True
-  average_tokens_across_devices: True
+  torch_compile: False
+  include_tokens_per_second: False
+  include_num_input_tokens_seen: False
+  average_tokens_across_devices: False
 
 # Optimizer configuration
 optimizers:
