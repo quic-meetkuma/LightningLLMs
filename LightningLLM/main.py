@@ -19,7 +19,7 @@ from trl.trainer.sft_config import SFTConfig
 from trl.trainer.sft_trainer import SFTTrainer
 from LightningLLM.components.dataset import SFTDataset
 from LightningLLM.utils.helper import get_callbacks, get_optimizer
-import yaml
+import yaml, json
 
 def main():
     """Main entry point for training."""
@@ -57,10 +57,7 @@ def main():
         "bf16": "bfloat16"
     }.get(model_dtype, "auto")
     
-    model_cls = ComponentFactory.create_model(**model_config)
-    model = model_cls.load_model()
-    peft_config = model_cls.load_peft_config()
-    tokenizer = model_cls.load_tokenizer()
+
 
     # Initialize optimizer
     optimizer_cls_and_kwargs = get_optimizer(config_manager)
@@ -93,25 +90,13 @@ def main():
         ddp_config = trainer_config.pop('ddp_config')
         trainer_config = {**trainer_config, **ddp_config}
             
-    trainer_type = trainer_config.pop("type", "base")
-    if trainer_type == "base":
-        trainer_cls = Trainer
-        args_cls = TrainingArguments
-        kwargs = {}
-    elif trainer_type == "sft":
-        trainer_cls = SFTTrainer
-        args_cls = SFTConfig
-        kwargs = {"peft_config": peft_config}
-    else:
-        raise ValueError(f"Invalid trainer type: {trainer_type}")
-    
-    fsdp_config_path = trainer_config.get("fsdp_config", None)
-    if fsdp_config_path:
-        # Open and load the YAML file
-        with open(fsdp_config_path, 'r') as file:
-            fsdp_config = yaml.safe_load(file)
+    accelerate_config_path = trainer_config.pop("accelerator_config", None)
+    if accelerate_config_path:
+        # Open and load the JSON file
+        with open(accelerate_config_path, "r", encoding="utf-8") as file:
+            accelerate_config = json.load(file)
 
-        parallelism_dict = fsdp_config.get("parallelism_config", None)
+        parallelism_dict = accelerate_config.get("parallelism_config", None)
         if parallelism_dict is not None:
             if is_accelerate_available("1.10.1"):
                 from accelerate.parallelism_config import ParallelismConfig
@@ -124,6 +109,27 @@ def main():
                 cp_size=parallelism_dict.get("cp_size", 1),
             )
         trainer_config["parallelism_config"] = parallelism_config
+        
+        fsdp_config = accelerate_config.get("fsdp_config", None)
+        if fsdp_config is not None:
+            trainer_config["fsdp_config"] = fsdp_config 
+        # model_config["parallel_config"] = parallelism_config
+            
+    model_cls = ComponentFactory.create_model(**model_config)
+    model = model_cls.load_model()
+    peft_config = model_cls.load_peft_config()
+    tokenizer = model_cls.load_tokenizer()
+    trainer_type = trainer_config.pop("type", "base")
+    if trainer_type == "base":
+        trainer_cls = Trainer
+        args_cls = TrainingArguments
+        kwargs = {}
+    elif trainer_type == "sft":
+        trainer_cls = SFTTrainer
+        args_cls = SFTConfig
+        kwargs = {"peft_config": peft_config}
+    else:
+        raise ValueError(f"Invalid trainer type: {trainer_type}")
     
     args = args_cls(**trainer_config)
     

@@ -24,6 +24,8 @@ from LightningLLM.components.component_registry import registry
 from LightningLLM.components.logger import get_logger
 from LightningLLM.utils.dataset_helper import insert_pad_token
 
+import os
+import torch.distributed as dist
 from peft import LoraConfig, PeftConfig, get_peft_model
 
 logger = get_logger(__name__)
@@ -175,6 +177,7 @@ class HFModel(BaseModel):
         self.tokenizer_name = kwargs.get("tokenizer_name", model_name)
         self.use_peft = self.model_config.get("use_peft", False)
         self.lora_config = None
+        # self.parallel_config = kwargs.get("parallel_config", None)
         if self.use_peft:
             peft_config = self.model_config.get("peft_config", {})
 
@@ -212,6 +215,34 @@ class HFModel(BaseModel):
                 bnb_4bit_use_double_quant=True,  # Saves additional memory
             )
 
+
+        # if "RANK" in os.environ and "WORLD_SIZE" in os.environ:
+        #     from torch.distributed.device_mesh import init_device_mesh, DeviceMesh
+        #     # device_mesh = init_device_mesh("cuda", (2, 2), mesh_dim_names=("dp", "tp"))
+        #     dist.init_process_group("nccl")
+        #     rank = dist.get_rank()
+        #     world_size = dist.get_world_size()
+        #     local_rank = int(os.environ["LOCAL_RANK"])
+        #     torch.cuda.set_device(local_rank)
+            
+            
+        #     tp_size = 2
+        #     dp_size = 2
+        #     cp_size = 1
+        #     assert world_size == tp_size * dp_size * cp_size, (
+        #         f"World size ({world_size}) must equal TP size ({tp_size}) * DP size ({dp_size}) * CP size ({cp_size})"
+        #     )
+
+        #     mesh = torch.arange(world_size).reshape(dp_size, tp_size, cp_size)
+        #     world_mesh = DeviceMesh(device_type="cuda", mesh=mesh, mesh_dim_names=("dp", "tp", "cp"))
+        #     tp_mesh = world_mesh["tp"]
+        #     dp_mesh = world_mesh["dp"]
+        #     cp_mesh = world_mesh["cp"]
+        
+        # from accelerate.state import PartialState
+
+        # state = PartialState()
+
         # Load model based on task type
         model = hf_cls.from_pretrained(
             self.model_name,
@@ -220,6 +251,10 @@ class HFModel(BaseModel):
             attn_implementation=self.model_config.get("attn_implementation"),
             device_map=self.model_config.get("device_map"),
             quantization_config=quant_config,
+            # tp_size=2,
+            # tp_plan="auto", 
+            # device_map={"": PartialState().process_index},
+            # device_mesh=tp_mesh if dist.is_initialized() else None,
         )
 
         return model
