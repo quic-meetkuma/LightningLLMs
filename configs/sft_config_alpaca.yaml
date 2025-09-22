@@ -11,8 +11,8 @@ model:
   model_type: "hf"  # Hugging Face model
   auto_class_name: "AutoModelForCausalLM"
   model_name: "meta-llama/Llama-3.2-1B"  # Pretrained model name
-  load_in_4bit: False
-  use_peft: True
+  load_in_4bit: false
+  use_peft: true
   peft_config:
     lora_r: 8
     lora_alpha: 16
@@ -78,7 +78,7 @@ training:
   # Uncomment below fsdp block to enable FSDP training
   # fsdp: "full_shard"
   # fsdp_config: "./configs/accelerate/fsdp_config.yaml"
-  # fsdp_config: "./configs/accelerate/fsdp_tp_parallelism_config.yaml"
+  # accelerator_config: "./configs/accelerate/fsdp_config.yaml"
 
   # Uncomment below deepspeed block to enable DeepSpeed training
   # deepspeed_config:
@@ -105,7 +105,7 @@ training:
     preserve_rng_state : True
     use_reenrant: False
 
-  torch_compile: True
+  torch_compile: False
   include_tokens_per_second: False
   include_num_input_tokens_seen: False
   average_tokens_across_devices: False
@@ -115,7 +115,6 @@ optimizers:
   optimizer_name: "adamw"
   lr: 3e-4
   weight_decay: 0.01
-  fused: True
 
 
 # “linear” → transformers.get_linear_schedule_with_warmup
