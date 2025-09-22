@@ -23,7 +23,7 @@ registry.callback("default_flow")(DefaultFlowCallback)
 registry.callback("tensorboard")(TensorBoardCallback)
 
 
-default_callbacks = [DefaultFlowCallback(), ProgressCallback()]
+# default_callbacks = [DefaultFlowCallback(), ProgressCallback()]
 
 def get_callback_cls(callback_name: str) -> type[TrainerCallback]:
     callback_cls = registry.get_callback(callback_name)

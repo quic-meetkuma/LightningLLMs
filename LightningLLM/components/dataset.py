@@ -216,12 +216,15 @@ class SFTDataset(Dataset):
         self.dataset = load_dataset(
             dataset_name, split=load_split
         )
-        if split == "test" and len(available_splits) == 1:
+        if len(available_splits) == 1:
             split_ratio = split_ratio
             splitted_dataset = self.dataset.train_test_split(
                 test_size=(1 - split_ratio), seed=seed
             )
-            self.dataset = splitted_dataset["test"]
+            if split == "test":
+                self.dataset = splitted_dataset["test"]
+            else:
+                self.dataset = splitted_dataset["train"]
 
         self.dataset_columns = self.dataset.column_names
         if prompt_template:

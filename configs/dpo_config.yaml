@@ -10,13 +10,13 @@
 model:
   model_type: "hf"  # Hugging Face model
   auto_class_name: "AutoModelForCausalLM"
-  model_name: "meta-llama/Llama-3.2-1B"  # Pretrained model name
-  load_in_4bit: False
-  use_peft: True
+  model_name: "HuggingFaceTB/SmolLM-135M"  # Pretrained model name
+  load_in_4bit: false
+  use_peft: true
   peft_config:
     lora_r: 8
     lora_alpha: 16
-    lora_dropout: 0.05
+    lora_dropout: 0.1
     target_modules: ["q_proj", "v_proj"]
     bias: "none"  # Options: none, all, lora_only
     task_type: "CAUSAL_LM"  # Options: CAUSAL_LM, SEQ_2_SEQ_LM, etc.
@@ -24,21 +24,19 @@ model:
 
 # Dataset configuration
 dataset:
-  tokenizer_name: "meta-llama/Llama-3.2-1B"
-  dataset_type: "sft_dataset"
-  dataset_name: "yahma/alpaca-cleaned"
+  tokenizer_name: "HuggingFaceTB/SmolLM-135M"
+  dataset_type: "seq_completion"
+  # dataset_name: "Arthur-LAGACHERIE/very-smollm-corpus-0.5M"
+  dataset_name: "knkarthick/samsum"
   train_split: "train"
-  max_seq_length: null
+  max_seq_length: 512
   split_ratio: 0.8  # Ratio for train/test split, used when only train_split is provided
   test_split: "test"
-  prompt_func: "LightningLLM.preprocessing.alpaca_func:create_alpaca_prompt"
-  completion_template: "{output}"    # Model will be trained on this part.
-  remove_samples_with_empty_columns: False
   group_by_length: True
   num_workers: 4
   pin_memory: True
   persistent_workers: True
-  prefetch_factor: 4
+  prefetch_factor: 1
   drop_last: False
 
 # Training configuration
@@ -50,12 +48,12 @@ training:
 
   do_eval: True
   eval_strategy: "epoch"
-  # eval_steps: 100
+  eval_steps: 100
 
   per_device_train_batch_size: 1
   per_device_eval_batch_size: 1
-  gradient_accumulation_steps: 4
-  num_train_epochs: 5
+  gradient_accumulation_steps: 1
+  num_train_epochs: 1
   max_steps: -1
 
   log_level: "info"
@@ -64,7 +62,7 @@ training:
   logging_steps: 10
 
   save_strategy: "epoch"
-  # save_steps: 100   # If 'save_strategy' is 'steps' then it will be used.
+  save_steps: 100   # If 'save_strategy' is 'steps' then it will be used.
   save_total_limit: 5
   metric_for_best_model: "eval_loss"
 
@@ -85,12 +83,12 @@ training:
   #   abc: 10
 
   # Uncomment below DDP block to enable DDP training and configure DDP params
-  ddp_config:
-    ddp_backend: "qccl"
-    ddp_find_unused_parameters: False
-    ddp_bucket_cap_mb: 25
-    ddp_broadcast_buffers: True
-    ddp_timeout: 1800
+  # ddp_config:
+  #   ddp_backend: "qccl"
+  #   ddp_find_unused_parameters: False
+  #   ddp_bucket_cap_mb: 25
+  #   ddp_broadcast_buffers: null
+  #   ddp_timeout: 1800
 
   # Uncomment below to explicitly run on CPU
   use_cpu: False
@@ -106,16 +104,15 @@ training:
     use_reenrant: False
 
   torch_compile: True
-  include_tokens_per_second: False
-  include_num_input_tokens_seen: False
-  average_tokens_across_devices: False
+  include_tokens_per_second: True
+  include_num_input_tokens_seen: True
+  average_tokens_across_devices: True
 
 # Optimizer configuration
 optimizers:
   optimizer_name: "adamw"
-  lr: 3e-4
+  lr: 5e-5
   weight_decay: 0.01
-  fused: True
 
 
 # “linear” → transformers.get_linear_schedule_with_warmup
