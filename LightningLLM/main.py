@@ -18,8 +18,10 @@ import os
 from trl.trainer.sft_config import SFTConfig
 from trl.trainer.sft_trainer import SFTTrainer
 from LightningLLM.components.dataset import SFTDataset
-from LightningLLM.utils.helper import get_callbacks, get_optimizer
+from LightningLLM.utils.helper import get_callbacks, get_optimizer, replace_progress_callback
 import yaml, json
+from pathlib import Path
+
 
 def main():
     """Main entry point for training."""
@@ -31,8 +33,9 @@ def main():
     model_config = config_manager.get_model_config()
     scheduler_config = config_manager.get_scheduler_config()
     
-    output_dir = trainer_config.get("output_dir", "./training_results") # Provide a default string value
-    
+    output_dir = Path(trainer_config.get("output_dir", "./training_results")) # Provide a default string value
+    os.environ["TRACKIO_DIR"] = str(output_dir / "trackio_logs")
+
     # Ensure default training arguments are present
     trainer_config.setdefault("overwrite_output_dir", False)
     trainer_config.setdefault("use_cpu", False)
@@ -40,6 +43,7 @@ def main():
     trainer_config.setdefault("torchdynamo", "eager")
     trainer_config.setdefault("remove_unused_columns", True)
     trainer_config.setdefault("skip_memory_metrics", True)
+    trainer_config.setdefault("include_num_input_tokens_seen", False)
     
     # Initialize dataset
     dataset_type = dataset_config.get("dataset_type", "sft_dataset")
@@ -57,7 +61,6 @@ def main():
         "bf16": "bfloat16"
     }.get(model_dtype, "auto")
     
-
 
     # Initialize optimizer
     optimizer_cls_and_kwargs = get_optimizer(config_manager)
@@ -143,7 +146,10 @@ def main():
                       optimizer_cls_and_kwargs=optimizer_cls_and_kwargs,
                       callbacks=callbacks,
                       **kwargs)
-
+    
+    # Replace default ProgressCallback with EnhancedProgressCallback
+    replace_progress_callback(trainer)
+    
     # Train model
     trainer.train()
 

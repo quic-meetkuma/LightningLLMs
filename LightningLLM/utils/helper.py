@@ -1,7 +1,8 @@
 
 from LightningLLM.components.optimizer import get_optimizer_cls
-from LightningLLM.components.callback import get_callback_cls
+from LightningLLM.components.callback import EnhancedProgressCallback, get_callback_cls
 from peft import LoraConfig, get_peft_model
+from transformers.trainer_callback import ProgressCallback
 
 
 def get_optimizer(config_manager):
@@ -44,3 +45,10 @@ def prepare_lora(config_manager, model):
         model.print_trainable_parameters()
     
     return model, lora_config
+
+def replace_progress_callback(trainer):
+    for cb in trainer.callback_handler.callbacks:
+        if isinstance(cb, ProgressCallback):
+            trainer.remove_callback(cb)
+            trainer.add_callback(EnhancedProgressCallback())
+            break
