@@ -14,7 +14,6 @@ from typing import Dict, Any, Optional
 import re
 import torch.nn.functional as F
 from datasets import load_dataset, load_dataset_builder
-from pytorch_lightning import LightningDataModule
 from torch.utils.data import Dataset
 from transformers import AutoTokenizer
 from typing import Callable
