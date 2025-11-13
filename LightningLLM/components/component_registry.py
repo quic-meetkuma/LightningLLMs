@@ -32,14 +32,26 @@ class ComponentRegistry:
         self._hooks: Dict[str, Type] = {}
         self._trainer_modules: Dict[str, Type] = {}
 
-    def trainer_module(self, name: str):
-        """Decorator to register a trainer module class."""
-
-        def decorator(cls: Type):
-            self._trainer_modules[name] = cls
+    def trainer_module(self, name: str, args_cls=None, required_kwargs=None):
+        """
+        Decorator to register a trainer module with its configuration.
+        
+        Args:
+            name: Name of the trainer type
+            args_cls: The arguments class for this trainer
+            required_kwargs: Dictionary of required keyword arguments and their default values
+        """
+        required_kwargs = required_kwargs or {}
+        
+        def decorator(trainer_cls):
+            self._trainer_modules[name] = {
+                'trainer_cls': trainer_cls,
+                'args_cls': args_cls,
+                'required_kwargs': required_kwargs
+            }
             logger.info(f"Registered trainer module: {name}")
-            return cls
-
+            return trainer_cls
+            
         return decorator
 
     def optimizer(self, name: str):
@@ -116,6 +128,13 @@ class ComponentRegistry:
         """Get trainer module class by name."""
         return self._trainer_modules.get(name)
 
+    def get_trainer_config(self, name: str) -> dict:
+        """Get trainer configuration by name."""
+        config = self._trainer_modules.get(name)
+        if config is None:
+            raise ValueError(f"Unknown trainer: {name}. Available: {self.list_trainer_modules()}")
+        return config
+    
     def get_optimizer(self, name: str) -> Optional[Type]:
         """Get optimizer class by name."""
         return self._optimizers.get(name)
@@ -193,6 +212,35 @@ class ComponentFactory:
                 f"Unknown trainer module: {name}. Available: {registry.list_trainer_modules()}"
             )
         return trainer_module_class(**kwargs)
+    
+    @staticmethod
+    def create_trainer_config(name: str, **dependencies) -> tuple:
+        """
+        Create trainer configuration based on registered trainer modules.
+        
+        Args:
+            name: Name of the trainer type
+            **dependencies: Any dependencies needed to configure the trainer
+            
+        Returns:
+            tuple: (trainer_class, args_class, additional_kwargs)
+        """
+        config = registry.get_trainer_config(name)
+        
+        # Process required kwargs based on available dependencies
+        additional_kwargs = {}
+        for kwarg, default in config['required_kwargs'].items():
+            if kwarg in dependencies:
+                additional_kwargs[kwarg] = dependencies[kwarg]
+            elif default != "REQUIRED":
+                additional_kwargs[kwarg] = default
+        
+        # Check for missing required arguments
+        for kwarg, default in config['required_kwargs'].items():
+            if kwarg not in additional_kwargs and default == "REQUIRED":
+                raise ValueError(f"Required argument '{kwarg}' not provided for trainer '{name}'")
+        
+        return config['trainer_cls'], config['args_cls'], additional_kwargs
 
     @staticmethod
     def create_optimizer(name: str, model_params, **kwargs) -> Any:

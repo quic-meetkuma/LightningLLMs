@@ -13,12 +13,17 @@ from typing import Type
 from LightningLLM.components.component_registry import registry
 from transformers.integrations.integration_utils import TensorBoardCallback
 from transformers import EarlyStoppingCallback, ProgressCallback, PrinterCallback, DefaultFlowCallback
-from transformers.trainer_callback import TrainerCallback
+from transformers.trainer_callback import TrainerCallback, TrainerState, TrainerControl
+from transformers import TrainingArguments
+from LightningLLM.utils.qaic_profiler_utils import get_op_verifier_ctx, init_qaic_profiling, stop_qaic_profiling
+import os
+from functools import partial
 
 registry.callback("early_stopping")(EarlyStoppingCallback)
 registry.callback("printer")(PrinterCallback)
 registry.callback("default_flow")(DefaultFlowCallback)
 registry.callback("tensorboard")(TensorBoardCallback)
+
 
 @registry.callback("enhanced_progressbar")
 class EnhancedProgressCallback(ProgressCallback):
@@ -70,8 +75,53 @@ class EnhancedProgressCallback(ProgressCallback):
             self.training_bar.set_postfix(updated_dict)
 
 
-# default_callbacks = [DefaultFlowCallback(), ProgressCallback()]
+@registry.callback("qaic_profiler_callback")
+class QAICProfilerCallback(TrainerCallback):
+    def __init__(self, *args, **kwargs):
+        self.start_step = kwargs.get("start_step", -1)
+        self.end_step = kwargs.get("end_step", -1)
+        self.device_ids = kwargs.get("device_ids", [0])
+        
+    def on_step_begin(self, args: TrainingArguments, state: TrainerState, control: TrainerControl, **kwargs):
+        """
+        Event called at the beginning of a training step. If using gradient accumulation, one training step might take
+        several inputs.
+        """
+        if state.global_step == self.start_step:
+            for device_id in self.device_ids:
+                init_qaic_profiling(True, f"qaic:{device_id}")
+        elif state.global_step == self.end_step:
+            for device_id in self.device_ids:
+                stop_qaic_profiling(True, f"qaic:{device_id}")
+    
 
+@registry.callback("qaic_op_by_op_verifier_callback")
+class QAICOpByOpVerifierCallback(TrainerCallback):
+    def __init__(self, *args, **kwargs):
+        self.start_step = kwargs.get("start_step", -1)
+        self.end_step = kwargs.get("end_step", -1)
+        self.trace_dir = kwargs.get("trace_dir", "qaic_op_by_op_traces")
+        
+    def on_step_begin(self, args: TrainingArguments, state: TrainerState, control: TrainerControl, **kwargs):
+        """
+        Event called at the beginning of a training step. If using gradient accumulation, one training step might take
+        several inputs.
+        """
+        if self.start_step <= state.global_step < self.end_step:
+            self.op_verifier_ctx_step = get_op_verifier_ctx(use_op_by_op_verifier=True, device_type="qaic", dump_dir=self.trace_dir, step=state.global_step)
+            self.op_verifier_ctx_step.__enter__()
+        
+    def on_step_end(self, args: TrainingArguments, state: TrainerState, control: TrainerControl, **kwargs):
+        """
+        Event called at the end of a training step. If using gradient accumulation, one training step might take
+        several inputs.
+        """
+        if self.start_step <= state.global_step < self.end_step:
+            if self.op_verifier_ctx_step is not None:
+                self.op_verifier_ctx_step.__exit__(None, None, None)
+
+
+# default_callbacks = [DefaultFlowCallback(), ProgressCallback()]
 def get_callback_cls(callback_name: str) -> type[TrainerCallback]:
     callback_cls = registry.get_callback(callback_name)
     if callback_cls is None:

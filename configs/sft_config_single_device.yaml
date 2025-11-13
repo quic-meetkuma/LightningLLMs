@@ -127,4 +127,12 @@ callbacks:
     early_stopping_patience: 3
     early_stopping_threshold: 0.001
   tensorboard:
+  qaic_profiler_callback:
+    start_step: 0
+    end_step: 1
+    device_ids: [0]
+  qaic_op_by_op_verifier_callback:
+    start_step: 0
+    end_step: 10
+
 

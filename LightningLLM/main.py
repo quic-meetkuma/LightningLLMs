@@ -35,6 +35,7 @@ def main():
     
     output_dir = Path(trainer_config.get("output_dir", "./training_results")) # Provide a default string value
     os.environ["TRACKIO_DIR"] = str(output_dir / "trackio_logs")
+    os.environ["TRACKIO_PROJECT"] = "qeff_finetuning"
 
     # Ensure default training arguments are present
     trainer_config.setdefault("overwrite_output_dir", False)
@@ -44,15 +45,22 @@ def main():
     trainer_config.setdefault("remove_unused_columns", True)
     trainer_config.setdefault("skip_memory_metrics", True)
     trainer_config.setdefault("include_num_input_tokens_seen", False)
+    trainer_config.setdefault("trackio_space_id", None)
     
     # Initialize dataset
     dataset_type = dataset_config.get("dataset_type", "sft_dataset")
-    if dataset_type == "sft_dataset":
-        train_dataset = SFTDataset(split="train", seed=trainer_config.get("seed", 42), **dataset_config)
-        test_dataset = SFTDataset(split="test", seed=trainer_config.get("seed", 42), **dataset_config)
-    else:
-        # TODO: Implement ComponentFactory for datasets if other types are needed
-        raise ValueError(f"Unsupported dataset type: {dataset_type}. Only 'sft_dataset' is currently supported.")
+    train_dataset = ComponentFactory.create_dataset(
+        dataset_type,
+        split="train",
+        seed=trainer_config.get("seed", 42),
+        **dataset_config
+    )
+    test_dataset = ComponentFactory.create_dataset(
+        dataset_type,
+        split="test",
+        seed=trainer_config.get("seed", 42),
+        **dataset_config
+    )
 
     # Initialize model and tokenizer
     model_dtype = trainer_config.get("dtype", "float16")
@@ -60,7 +68,7 @@ def main():
         "fp16": "float16",
         "bf16": "bfloat16"
     }.get(model_dtype, "auto")
-    
+
 
     # Initialize optimizer
     optimizer_cls_and_kwargs = get_optimizer(config_manager)
@@ -73,13 +81,13 @@ def main():
     trainer_config[dtype] = True
     trainer_config["logging_dir"] = os.path.join(output_dir, "tb_logs")
     trainer_config["data_seed"] = trainer_config["seed"]
-    
+
     # Ensure scheduler config is correctly applied
     trainer_config.setdefault("lr_scheduler_type", scheduler_config.get("name", "cosine"))
     trainer_config.setdefault("warmup_ratio", scheduler_config.get("warmup_ratio", None))
     trainer_config.setdefault("warmup_steps", scheduler_config.get("warmup_steps", None))
     # trainer_config.setdefault("lr_scheduler_kwargs", scheduler_config.get("lr_scheduler_kwargs", None)) # This field doesn't exist in config_manager.py
-    
+
     # Set dataloader configurations
     trainer_config.setdefault("dataloader_pin_memory", dataset_config.get("dataloader_pin_memory", True))
     trainer_config.setdefault("dataloader_persistent_workers", dataset_config.get("dataloader_persistent_workers", True))
@@ -87,12 +95,12 @@ def main():
     trainer_config.setdefault("dataloader_drop_last", dataset_config.get("dataloader_drop_last", False))
     trainer_config.setdefault("dataloader_num_workers", dataset_config.get("dataloader_num_workers", 1))
     trainer_config.setdefault("group_by_length", dataset_config.get("group_by_length", True))
-    
+
     # Set DDP configurations
     if trainer_config.get("ddp_config", None) is not None:
         ddp_config = trainer_config.pop('ddp_config')
         trainer_config = {**trainer_config, **ddp_config}
-            
+
     accelerate_config_path = trainer_config.pop("accelerator_config", None)
     if accelerate_config_path:
         # Open and load the JSON file
@@ -112,40 +120,39 @@ def main():
                 cp_size=parallelism_dict.get("cp_size", 1),
             )
         trainer_config["parallelism_config"] = parallelism_config
-        
+
         fsdp_config = accelerate_config.get("fsdp_config", None)
         if fsdp_config is not None:
-            trainer_config["fsdp_config"] = fsdp_config 
+            trainer_config["fsdp_config"] = fsdp_config
         # model_config["parallel_config"] = parallelism_config
-            
+
     model_cls = ComponentFactory.create_model(**model_config)
     model = model_cls.load_model()
     peft_config = model_cls.load_peft_config()
     tokenizer = model_cls.load_tokenizer()
+    
     trainer_type = trainer_config.pop("type", "base")
-    if trainer_type == "base":
-        trainer_cls = Trainer
-        args_cls = TrainingArguments
-        kwargs = {}
-    elif trainer_type == "sft":
-        trainer_cls = SFTTrainer
-        args_cls = SFTConfig
-        kwargs = {"peft_config": peft_config}
-    else:
-        raise ValueError(f"Invalid trainer type: {trainer_type}")
+
+    # Get trainer configuration from registry
+    trainer_cls, args_cls, additional_kwargs = ComponentFactory.create_trainer_config(
+        trainer_type,
+        peft_config=peft_config,  # Pass any dependencies needed by specific trainers
+        model=model,
+        tokenizer=tokenizer
+    )
     
     args = args_cls(**trainer_config)
     
     # Initialize trainer
-    trainer = trainer_cls(model=model, 
-                      processing_class=tokenizer, 
-                      args=args, 
+    trainer = trainer_cls(model=model,
+                      processing_class=tokenizer,
+                      args=args,
                       compute_loss_func=None,
-                      train_dataset=train_dataset.dataset,
-                      eval_dataset=test_dataset.dataset,
+                      train_dataset=train_dataset.hf_dataset,
+                      eval_dataset=test_dataset.hf_dataset,
                       optimizer_cls_and_kwargs=optimizer_cls_and_kwargs,
                       callbacks=callbacks,
-                      **kwargs)
+                      **additional_kwargs)
     
     # Replace default ProgressCallback with EnhancedProgressCallback
     replace_progress_callback(trainer)

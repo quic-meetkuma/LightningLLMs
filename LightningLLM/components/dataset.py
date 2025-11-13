@@ -21,10 +21,38 @@ import importlib
 from LightningLLM.components.component_registry import registry
 from LightningLLM.utils.dataset_helper import insert_pad_token
 
+class BaseDataset(Dataset):
+    """Base class for all datasets to ensure consistent interface."""
+    def __init__(self, 
+                 dataset_name: str,
+                 split: str,
+                 seed: int = 42,
+                 **kwargs):
+        self.dataset_name = dataset_name
+        self.split = split
+        self.seed = seed
+        self.kwargs = kwargs
+        self._initialize_dataset()
+    
+    def _initialize_dataset(self):
+        """Subclasses should implement this to load and prepare the dataset."""
+        raise NotImplementedError
+    
+    @property
+    def hf_dataset(self):
+        """Return the underlying Hugging Face dataset object."""
+        return self.dataset
+    
+    def __len__(self):
+        return len(self.dataset)
+    
+    def __getitem__(self, idx):
+        """Should return a dictionary with 'input_ids', 'attention_mask', and 'labels'."""
+        raise NotImplementedError
 
 # Used for pretraining
 @registry.dataset("seq_completion")
-class SentenceCompletionDataset(Dataset):
+class SentenceCompletionDataset(BaseDataset):
     """Generic dataset class which can be used for autoregressive training."""
 
     def __init__(self, dataset, tokenizer, max_length, split, **kwargs):
@@ -34,9 +62,6 @@ class SentenceCompletionDataset(Dataset):
         self.kwargs = kwargs
         self.split = split
         self.input_column = kwargs.get("extra_params", {}).get("input_column", "text")
-
-    def __len__(self):
-        return len(self.dataset)
 
     def __getitem__(self, idx):
         item = self.dataset[idx]
@@ -68,7 +93,7 @@ class SentenceCompletionDataset(Dataset):
 
 # Used for SFT
 @registry.dataset("chatml_instruction_following")
-class ChatMLInstructionFollowingDataset(Dataset):
+class ChatMLInstructionFollowingDataset(BaseDataset):
     """Generic dataset class which can be used for autoregressive training."""
 
     def __init__(self, dataset, tokenizer, max_length, split, **kwargs):
@@ -95,9 +120,6 @@ class ChatMLInstructionFollowingDataset(Dataset):
         self.target_column = self.extra_params["target_column"]
         self.prompt_template = self.extra_params["prompt_template"]
         self.ignore_index = self.extra_params["ignore_index"]
-
-    def __len__(self):
-        return len(self.dataset)
 
     def __getitem__(self, idx):
         item = self.dataset[idx]
@@ -160,7 +182,7 @@ class ChatMLInstructionFollowingDataset(Dataset):
 
 
 @registry.dataset("sft_dataset")
-class SFTDataset(Dataset):
+class SFTDataset(BaseDataset):
     """
     A Supervised Fine-Tuning (SFT) dataset class for text data.
 
