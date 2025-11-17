@@ -45,7 +45,6 @@ dataset:
 training:
   type: "sft"
   output_dir: "./training_results"
-  overwrite_output_dir: False
   seed: 42
 
   do_eval: True
@@ -89,7 +88,6 @@ training:
     use_reenrant: False
 
   torch_compile: False
-  include_tokens_per_second: False
   include_num_input_tokens_seen: False
   average_tokens_across_devices: False
 

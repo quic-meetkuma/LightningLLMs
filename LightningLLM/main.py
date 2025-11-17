@@ -38,10 +38,8 @@ def main():
     os.environ["TRACKIO_PROJECT"] = "qeff_finetuning"
 
     # Ensure default training arguments are present
-    trainer_config.setdefault("overwrite_output_dir", False)
     trainer_config.setdefault("use_cpu", False)
     trainer_config.setdefault("full_determinism", True)
-    trainer_config.setdefault("torchdynamo", "eager")
     trainer_config.setdefault("remove_unused_columns", True)
     trainer_config.setdefault("skip_memory_metrics", True)
     trainer_config.setdefault("include_num_input_tokens_seen", False)
@@ -79,7 +77,7 @@ def main():
     # Initialize training arguments
     dtype = trainer_config.pop("dtype", "fp16")
     trainer_config[dtype] = True
-    trainer_config["logging_dir"] = os.path.join(output_dir, "tb_logs")
+    # trainer_config["logging_dir"] = os.path.join(output_dir, "tb_logs")
     trainer_config["data_seed"] = trainer_config["seed"]
 
     # Ensure scheduler config is correctly applied
