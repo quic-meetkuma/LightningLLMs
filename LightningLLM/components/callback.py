@@ -101,6 +101,8 @@ class QAICOpByOpVerifierCallback(TrainerCallback):
         self.start_step = kwargs.get("start_step", -1)
         self.end_step = kwargs.get("end_step", -1)
         self.trace_dir = kwargs.get("trace_dir", "qaic_op_by_op_traces")
+        self.atol = kwargs.get("atol", 1e-1)
+        self.rtol = kwargs.get("rtol", 1e-5)
         
     def on_step_begin(self, args: TrainingArguments, state: TrainerState, control: TrainerControl, **kwargs):
         """
@@ -108,7 +110,7 @@ class QAICOpByOpVerifierCallback(TrainerCallback):
         several inputs.
         """
         if self.start_step <= state.global_step < self.end_step:
-            self.op_verifier_ctx_step = get_op_verifier_ctx(use_op_by_op_verifier=True, device_type="qaic", dump_dir=self.trace_dir, step=state.global_step)
+            self.op_verifier_ctx_step = get_op_verifier_ctx(use_op_by_op_verifier=True, device_type="qaic", dump_dir=self.trace_dir, step=state.global_step, atol=self.atol, rtol=self.rtol)
             self.op_verifier_ctx_step.__enter__()
         
     def on_step_end(self, args: TrainingArguments, state: TrainerState, control: TrainerControl, **kwargs):

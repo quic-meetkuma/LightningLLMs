@@ -88,7 +88,7 @@ training:
     preserve_rng_state : True
     use_reenrant: False
 
-  torch_compile: True
+  torch_compile: False
   include_tokens_per_second: False
   include_num_input_tokens_seen: False
   average_tokens_across_devices: False
@@ -134,5 +134,7 @@ callbacks:
   qaic_op_by_op_verifier_callback:
     start_step: 0
     end_step: 10
+    atol: 1e-1
+    rtol: 1e-5
 
 
