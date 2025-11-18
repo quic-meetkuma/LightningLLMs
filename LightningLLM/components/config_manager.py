@@ -49,11 +49,9 @@ class SchedulerConfig:
     )
     warmup_steps: int = field(
         default=100,
-        metadata={"help": "Number of steps for the warmup phase."},
-    )
-    warmup_ratio: float = field(
-        default=0.1,
-        metadata={"help": "Ratio of total training steps for the warmup phase (if warmup_steps is not set)."},
+        metadata={"help": "Number of steps for the warmup phase. If provided " 
+                  "value is within [0-1) range then it will be interpreted as " 
+                  "ratio of total training steps for the warmup phase."},
     )
 
 

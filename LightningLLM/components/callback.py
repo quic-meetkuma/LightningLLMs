@@ -18,6 +18,8 @@ from transformers import TrainingArguments
 from LightningLLM.utils.qaic_profiler_utils import get_op_verifier_ctx, init_qaic_profiling, stop_qaic_profiling
 import os
 from functools import partial
+import json
+from typing import Dict, Optional
 
 registry.callback("early_stopping")(EarlyStoppingCallback)
 registry.callback("printer")(PrinterCallback)
@@ -74,6 +76,40 @@ class EnhancedProgressCallback(ProgressCallback):
                 updated_dict["lr"] = shallow_logs["learning_rate"]
             self.training_bar.set_postfix(updated_dict)
 
+
+@registry.callback("json_logger")
+class JSONLoggerCallback(TrainerCallback):
+    """
+    A [`TrainerCallback`] that logs training and evaluation metrics to a JSON file.
+    """
+
+    def __init__(self, log_path=None, *args, **kwargs):
+        """
+        Initialize the callback with the path to the JSON log file.
+
+        Args:
+            log_path (`str`):
+                Path to the jsonl file where logs will be saved.
+        """
+        super().__init__(*args, **kwargs)
+        if log_path is None:
+            log_path = os.path.join(os.environ.get("OUTPUT_DIR", "./"), "training_logs.jsonl")
+        self.log_path = log_path
+        # Ensure the log file is created and empty
+        with open(self.log_path, 'w') as f:
+            pass
+        
+    def on_log(self, args: TrainingArguments, state: TrainerState, control: TrainerControl, logs: Optional[Dict]=None, **kwargs):
+        if logs is None:
+            return
+        logs.pop("entropy")
+        logs.pop("mean_token_accuracy")
+        if state.global_step:
+            logs["global_step"] = state.global_step      
+        if logs is not None:
+            with open(self.log_path, 'a') as f:
+                json_line = json.dumps(logs, separators=(",", ":"))
+                f.write(json_line + "\n")
 
 @registry.callback("qaic_profiler_callback")
 class QAICProfilerCallback(TrainerCallback):

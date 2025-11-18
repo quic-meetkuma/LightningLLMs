@@ -5,17 +5,15 @@ from peft import LoraConfig, get_peft_model
 from transformers.trainer_callback import ProgressCallback
 
 
-def get_optimizer(config_manager):
-    opt_config = config_manager.get_optimizer_config()
+def get_optimizer(opt_config):
     opt_name = opt_config.pop("optimizer_name")
     opt_cls = get_optimizer_cls(opt_name)
     opt_config['lr'] = float(opt_config['lr'])
     optimizer_cls_and_kwargs = (opt_cls, opt_config)
     return optimizer_cls_and_kwargs
 
-def get_callbacks(config_manager):
+def get_callbacks(callback_config):
     callbacks = []
-    callback_config = config_manager.get_callback_config()
     for callback_name, callback_dict in callback_config.items():
         # FIXME: this could have been fixed in config manager.
         if callback_dict is None:

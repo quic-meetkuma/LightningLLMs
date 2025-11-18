@@ -32,10 +32,13 @@ def main():
     dataset_config = config_manager.get_dataset_config()
     model_config = config_manager.get_model_config()
     scheduler_config = config_manager.get_scheduler_config()
+    callback_config = config_manager.get_callback_config()
+    optimizer_config = config_manager.get_optimizer_config()
     
     output_dir = Path(trainer_config.get("output_dir", "./training_results")) # Provide a default string value
+    os.environ["OUTPUT_DIR"] = str(output_dir)
     os.environ["TRACKIO_DIR"] = str(output_dir / "trackio_logs")
-    os.environ["TRACKIO_PROJECT"] = "qeff_finetuning"
+    os.environ["TENSORBOARD_LOGGING_DIR"] = str(output_dir)
 
     # Ensure default training arguments are present
     trainer_config.setdefault("use_cpu", False)
@@ -44,6 +47,8 @@ def main():
     trainer_config.setdefault("skip_memory_metrics", True)
     trainer_config.setdefault("include_num_input_tokens_seen", False)
     trainer_config.setdefault("trackio_space_id", None)
+    trainer_config.setdefault("log_level", "info")
+    trainer_config.setdefault("project", "qeff_finetuning")
     
     # Initialize dataset
     dataset_type = dataset_config.get("dataset_type", "sft_dataset")
@@ -69,15 +74,14 @@ def main():
 
 
     # Initialize optimizer
-    optimizer_cls_and_kwargs = get_optimizer(config_manager)
+    optimizer_cls_and_kwargs = get_optimizer(optimizer_config)
 
     # Initialize callbacks
-    callbacks = get_callbacks(config_manager)
+    callbacks = get_callbacks(callback_config)
 
     # Initialize training arguments
     dtype = trainer_config.pop("dtype", "fp16")
     trainer_config[dtype] = True
-    # trainer_config["logging_dir"] = os.path.join(output_dir, "tb_logs")
     trainer_config["data_seed"] = trainer_config["seed"]
 
     # Ensure scheduler config is correctly applied

@@ -109,8 +109,7 @@ optimizers:
 
 scheduler:
   scheduler_name: "cosine"
-  warmup_steps: 100   # warmup_steps or warmup_ratio
-  warmup_ratio: 0.1
+  warmup_steps: 100   # If within 0-1 range then it will be used as warmup_ratio.
 
 # # Loss function configuration
 # loss_functions:
@@ -125,14 +124,15 @@ callbacks:
     early_stopping_patience: 3
     early_stopping_threshold: 0.001
   tensorboard:
-  qaic_profiler_callback:
-    start_step: 0
-    end_step: 1
-    device_ids: [0]
-  qaic_op_by_op_verifier_callback:
-    start_step: 0
-    end_step: 10
-    atol: 1e-1
-    rtol: 1e-5
+  json_logger:
+  # qaic_profiler_callback:
+  #   start_step: 0
+  #   end_step: 1
+  #   device_ids: [0]
+  # qaic_op_by_op_verifier_callback:
+  #   start_step: 0
+  #   end_step: 10
+  #   atol: 1e-1
+  #   rtol: 1e-5
 
 
